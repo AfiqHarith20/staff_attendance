@@ -1,0 +1,9 @@
+import 'package:get/get.dart';
+import 'package:staff_attendance/apps/controllers/register_controller/register_controller.dart';
+
+class RegisterBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<RegisterController>(() => RegisterController());
+  }
+}
