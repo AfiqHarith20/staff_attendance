@@ -29,4 +29,11 @@ Report export — export attendance logs to Excel
 
 Tech Stack
 Mobile (Flutter)
-PurposePackageFrameworkFlutter 3.xState managementGetXHTTP clientDioLocal storageGetStorageGeolocationgeolocatorMapflutter_map (OpenStreetMap)File uploadfile_pickerPush notificationsfirebase_messagingFontPoppins (Google Fonts)
+Framework: Flutter 3.x
+State management: GetX
+HTTP client: Dio
+Local storage: geolocator
+Map: google_maps_flutter
+File upload: file_picker
+Push notifications: firebase_messaging
+Font: Poppins (Google Fonts)
