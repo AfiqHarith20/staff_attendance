@@ -9,6 +9,7 @@ import 'package:staff_attendance/apps/controllers/locale_controller/locale_contr
 import 'package:staff_attendance/apps/routes/routes.dart';
 import 'package:staff_attendance/core/services/storage_service.dart';
 import 'package:staff_attendance/core/services/token_controller.dart';
+import 'package:staff_attendance/widgets/app_toast.dart';
 
 class ProfileController extends GetxController {
   static const _notificationsKey = 'profile_notifications_enabled';
@@ -30,6 +31,20 @@ class ProfileController extends GetxController {
   final _phone = '+60 12-345 6789'.obs;
   final _employeeId = 'EMP-0042'.obs;
   final _office = 'Operations · Clokk HQ'.obs;
+  final _department = 'Operations'.obs;
+  final _managerName = 'Nur Aisyah Rahman'.obs;
+  final _jobTitle = 'Operations Executive'.obs;
+  final _employmentType = 'Full-time'.obs;
+  final _joinedOn = '12 Jan 2024'.obs;
+  final _emergencyContactName = 'Hafiz Nizam'.obs;
+  final _emergencyContactPhone = '+60 19-888 1122'.obs;
+  final _emergencyContactRelation = 'Brother'.obs;
+  final _bankName = 'Maybank'.obs;
+  final _bankAccountMasked = '**** 4421'.obs;
+  final _payrollCycle = 'Monthly · 24th'.obs;
+  final _lastLogin = '24 Jul 2026, 8:14 AM'.obs;
+  final _activeDevice = 'iPhone 15 Pro · iOS'.obs;
+  final biometricLoginEnabled = false.obs;
 
   final fullNameController = TextEditingController();
   final emailController = TextEditingController();
@@ -51,6 +66,19 @@ class ProfileController extends GetxController {
   String get phone => _phone.value;
   String get employeeId => _employeeId.value;
   String get office => _office.value;
+  String get department => _department.value;
+  String get managerName => _managerName.value;
+  String get jobTitle => _jobTitle.value;
+  String get employmentType => _employmentType.value;
+  String get joinedOn => _joinedOn.value;
+  String get emergencyContactName => _emergencyContactName.value;
+  String get emergencyContactPhone => _emergencyContactPhone.value;
+  String get emergencyContactRelation => _emergencyContactRelation.value;
+  String get bankName => _bankName.value;
+  String get bankAccountMasked => _bankAccountMasked.value;
+  String get payrollCycle => _payrollCycle.value;
+  String get lastLogin => _lastLogin.value;
+  String get activeDevice => _activeDevice.value;
 
   Uint8List? get profileImageBytes {
     final encoded = profileImageBase64.value;
@@ -64,7 +92,20 @@ class ProfileController extends GetxController {
 
   String get roleLabel {
     final role = (_box.read<String>('user_role') ?? 'staff').toLowerCase();
-    return role.contains('admin') ? 'admin_owner'.tr : 'staff'.tr;
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'super_admin':
+        return 'Super Admin';
+      case 'owner':
+        return 'Owner';
+      case 'hr':
+        return 'HR';
+      case 'manager':
+        return 'Manager';
+      default:
+        return 'staff'.tr;
+    }
   }
 
   String get currentLanguageLabel =>
@@ -97,6 +138,12 @@ class ProfileController extends GetxController {
     _phone.value = _box.read<String>('user_phone') ?? '+60 12-345 6789';
     _employeeId.value = _box.read<String>('employee_id') ?? 'EMP-0042';
     _office.value = _box.read<String>('office_name') ?? 'Operations · Clokk HQ';
+    _department.value = _box.read<String>('department_name') ?? 'Operations';
+    _managerName.value =
+        _box.read<String>('manager_name') ?? 'Nur Aisyah Rahman';
+    _jobTitle.value = _box.read<String>('job_title') ?? 'Operations Executive';
+    biometricLoginEnabled.value =
+        _box.read<bool>('biometric_login_enabled') ?? false;
     profileImageBase64.value = _box.read<String>(_profileImageKey);
     _seedProfileControllers();
   }
@@ -125,6 +172,82 @@ class ProfileController extends GetxController {
   void toggleNotifications(bool value) {
     notificationsEnabled.value = value;
     _box.write(_notificationsKey, value);
+  }
+
+  void toggleBiometricLogin(bool value) {
+    biometricLoginEnabled.value = value;
+    _box.write('biometric_login_enabled', value);
+  }
+
+  void openSessionSheet() {
+    final isDark = Get.isDarkMode;
+    Get.bottomSheet(
+      SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF111827) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Session & Security',
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.phone_iphone_rounded),
+                  title: Text(activeDevice),
+                  subtitle: Text('Last login: $lastLogin'),
+                ),
+              ),
+              Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.verified_user_outlined),
+                  title: const Text('Sign out other devices'),
+                  subtitle: const Text(
+                    'End other active sessions for this account',
+                  ),
+                  onTap: () {
+                    if (Get.isBottomSheetOpen ?? false) Get.back();
+                    AppToast.success(
+                      'Session & Security',
+                      'Other sessions have been signed out.',
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
   }
 
   void openLanguageSheet() {
@@ -188,13 +311,16 @@ class ProfileController extends GetxController {
     required VoidCallback onTap,
   }) {
     final selected = selectedLanguageCode.value == value;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-      title: Text(label),
-      trailing: Icon(
-        selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-        color: selected ? const Color(0xFF185FA5) : const Color(0xFF94A3B8),
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        onTap: onTap,
+        title: Text(label),
+        trailing: Icon(
+          selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+          color: selected ? const Color(0xFF185FA5) : const Color(0xFF94A3B8),
+        ),
       ),
     );
   }
@@ -205,12 +331,7 @@ class ProfileController extends GetxController {
     if (Get.isBottomSheetOpen ?? false) {
       Get.back();
     }
-    Get.snackbar(
-      'language'.tr,
-      'language_updated'.tr,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(12),
-    );
+    AppToast.success('language'.tr, 'language_updated'.tr);
   }
 
   void openEditProfileSheet() {
@@ -454,12 +575,7 @@ class ProfileController extends GetxController {
 
     final bytes = result.files.single.bytes;
     if (bytes == null || bytes.isEmpty) {
-      Get.snackbar(
-        'profile_details'.tr,
-        'image_pick_failed'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
+      AppToast.failed('profile_details'.tr, 'image_pick_failed'.tr);
       return;
     }
 
@@ -478,22 +594,12 @@ class ProfileController extends GetxController {
     final officeName = officeController.text.trim();
 
     if ([name, mail, phoneNumber, id, officeName].any((e) => e.isEmpty)) {
-      Get.snackbar(
-        'profile_details'.tr,
-        'fill_all_fields'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
+      AppToast.failed('profile_details'.tr, 'fill_all_fields'.tr);
       return;
     }
 
     if (!mail.contains('@')) {
-      Get.snackbar(
-        'profile_details'.tr,
-        'invalid_email'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
+      AppToast.failed('profile_details'.tr, 'invalid_email'.tr);
       return;
     }
 
@@ -524,12 +630,7 @@ class ProfileController extends GetxController {
       Get.back();
     }
 
-    Get.snackbar(
-      'profile_details'.tr,
-      'profile_updated'.tr,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(12),
-    );
+    AppToast.success('profile_details'.tr, 'profile_updated'.tr);
   }
 
   void openChangePasswordSheet() {
@@ -752,32 +853,17 @@ class ProfileController extends GetxController {
     final confirm = confirmPasswordController.text.trim();
 
     if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
-      Get.snackbar(
-        'change_password'.tr,
-        'fill_all_fields'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
+      AppToast.failed('change_password'.tr, 'fill_all_fields'.tr);
       return;
     }
 
     if (next.length < 6) {
-      Get.snackbar(
-        'change_password'.tr,
-        'password_too_short'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
+      AppToast.failed('change_password'.tr, 'password_too_short'.tr);
       return;
     }
 
     if (next != confirm) {
-      Get.snackbar(
-        'change_password'.tr,
-        'password_mismatch'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
+      AppToast.failed('change_password'.tr, 'password_mismatch'.tr);
       return;
     }
 
@@ -789,12 +875,7 @@ class ProfileController extends GetxController {
       Get.back();
     }
 
-    Get.snackbar(
-      'change_password'.tr,
-      'password_updated'.tr,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(12),
-    );
+    AppToast.success('change_password'.tr, 'password_updated'.tr);
   }
 
   void confirmLogout() {

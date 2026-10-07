@@ -9,6 +9,8 @@ class OtherController extends GetxController {
   final payslipReady = false.obs;
   final payslipMonth = ''.obs;
   final nextHoliday = ''.obs; // e.g. "5 Apr"
+  final selectedCategory = 'All'.obs;
+  final searchQuery = ''.obs;
 
   final isLoading = false.obs;
 
@@ -36,4 +38,7 @@ class OtherController extends GetxController {
       isLoading(false);
     }
   }
+
+  void setCategory(String value) => selectedCategory(value);
+  void setSearchQuery(String value) => searchQuery(value.trim().toLowerCase());
 }

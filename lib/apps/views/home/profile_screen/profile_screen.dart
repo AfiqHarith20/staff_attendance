@@ -3,7 +3,8 @@ import 'package:get/get.dart';
 import 'package:staff_attendance/apps/controllers/profile_controller/profile_controller.dart';
 import 'package:staff_attendance/apps/controllers/theme_controller/theme_controller.dart';
 import 'package:staff_attendance/apps/themes/app_colors.dart';
-import '../../../widgets/responsive_page.dart';
+import 'package:staff_attendance/widgets/app_version_text.dart';
+import '../../../../widgets/responsive_page.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -114,7 +115,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        profileCtrl.office,
+                        profileCtrl.jobTitle,
                         style: TextStyle(
                           color: muted,
                           fontSize: 13,
@@ -180,6 +181,114 @@ class ProfileScreen extends StatelessWidget {
                     value: profileCtrl.employeeId,
                     isDark: isDark,
                   ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.apartment_outlined,
+                    title: 'Office',
+                    value: profileCtrl.office,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'employment',
+                isDark: isDark,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                children: [
+                  _InfoRow(
+                    icon: Icons.work_outline_rounded,
+                    title: 'Job title',
+                    value: profileCtrl.jobTitle,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.account_tree_outlined,
+                    title: 'Department',
+                    value: profileCtrl.department,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.supervisor_account_outlined,
+                    title: 'Reports to',
+                    value: profileCtrl.managerName,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Joined on',
+                    value: profileCtrl.joinedOn,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.assignment_ind_outlined,
+                    title: 'Employment type',
+                    value: profileCtrl.employmentType,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'emergency contact',
+                isDark: isDark,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                children: [
+                  _InfoRow(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Name',
+                    value: profileCtrl.emergencyContactName,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.family_restroom_outlined,
+                    title: 'Relationship',
+                    value: profileCtrl.emergencyContactRelation,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.call_outlined,
+                    title: 'Phone',
+                    value: profileCtrl.emergencyContactPhone,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'payroll & bank',
+                isDark: isDark,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                children: [
+                  _InfoRow(
+                    icon: Icons.account_balance_outlined,
+                    title: 'Bank',
+                    value: profileCtrl.bankName,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.credit_card_outlined,
+                    title: 'Account',
+                    value: profileCtrl.bankAccountMasked,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.payments_outlined,
+                    title: 'Payroll cycle',
+                    value: profileCtrl.payrollCycle,
+                    isDark: isDark,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -242,6 +351,54 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              _SectionCard(
+                title: 'session & security',
+                isDark: isDark,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                children: [
+                  _InfoRow(
+                    icon: Icons.schedule_outlined,
+                    title: 'Last login',
+                    value: profileCtrl.lastLogin,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.devices_other_outlined,
+                    title: 'Active device',
+                    value: profileCtrl.activeDevice,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  Obx(
+                    () => _SettingRow(
+                      icon: Icons.fingerprint_rounded,
+                      title: 'Biometric unlock',
+                      subtitle: 'Use Face ID / fingerprint on this device',
+                      isDark: isDark,
+                      trailing: Switch.adaptive(
+                        value: profileCtrl.biometricLoginEnabled.value,
+                        onChanged: profileCtrl.toggleBiometricLogin,
+                        activeThumbColor: AppColors.primary,
+                        activeTrackColor: AppColors.primary.withValues(
+                          alpha: 0.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _SettingRow(
+                    icon: Icons.shield_outlined,
+                    title: 'Manage sessions',
+                    subtitle: 'View active device and sign out other sessions',
+                    isDark: isDark,
+                    onTap: profileCtrl.openSessionSheet,
+                    trailing: Icon(Icons.chevron_right_rounded, color: muted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: profileCtrl.confirmLogout,
                 icon: const Icon(
@@ -271,6 +428,14 @@ class ProfileScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppVersionText(
+                style: TextStyle(
+                  color: muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

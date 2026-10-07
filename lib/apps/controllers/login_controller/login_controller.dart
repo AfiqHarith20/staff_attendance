@@ -5,25 +5,20 @@ import 'package:get_storage/get_storage.dart';
 import '../../../apps/routes/routes.dart';
 import '../../../api/api_client.dart';
 
-enum UserRole { admin, staff }
-
 class LoginController extends GetxController {
   final _emailController = ''.obs;
   final _passwordController = ''.obs;
   final _isLoading = false.obs;
   final _obscurePassword = true.obs;
-  final _selectedRole = UserRole.staff.obs;
   final _errorMessage = ''.obs;
 
   bool get isLoading => _isLoading.value;
   bool get obscurePassword => _obscurePassword.value;
-  UserRole get selectedRole => _selectedRole.value;
   String get errorMessage => _errorMessage.value;
 
   void setEmail(String v) => _emailController(v.trim());
   void setPassword(String v) => _passwordController(v);
   void toggleObscure() => _obscurePassword(!_obscurePassword.value);
-  void setRole(UserRole role) => _selectedRole(role);
 
   Future<void> login(String email, String password) async {
     try {
@@ -35,15 +30,28 @@ class LoginController extends GetxController {
         data: {
           'email': email.trim(),
           'password': password,
-          'role': selectedRole.name, // 'admin' or 'staff'
         },
       );
 
-      final token = response.data['data']['token'] as String;
-      final role = response.data['data']['role'] as String;
+      final data = response.data['data'] as Map<String, dynamic>;
+      final token = data['token'] as String;
+      final role = data['role'] as String;
+      final user = data['user'] as Map<String, dynamic>?;
+      final emailAddress = user?['email'] as String? ?? 'ahmad@clokk.app';
+      final displayName = _displayNameFromUser(user, emailAddress, role);
 
       await GetStorage().write('auth_token', token);
       await GetStorage().write('user_role', role);
+      await GetStorage().write('user_name', displayName);
+      await GetStorage().write('user_email', emailAddress);
+      await GetStorage().write(
+        'job_title',
+        user?['job_title'] as String? ?? 'Operations Executive',
+      );
+      await GetStorage().write(
+        'department_name',
+        user?['department'] as String? ?? 'Operations',
+      );
 
       // Navigate into the app shell (bottom navigation)
       Get.offAllNamed(Routes.app);
@@ -58,8 +66,27 @@ class LoginController extends GetxController {
     }
   }
 
-  @override
-  void onClose() {
-    super.onClose();
+  String _displayNameFromUser(
+    Map<String, dynamic>? user,
+    String email,
+    String role,
+  ) {
+    final name = (user?['name'] as String?)?.trim();
+    if (name != null && name.isNotEmpty) return name;
+
+    final local = email.split('@').first.trim();
+    if (local.isNotEmpty) {
+      final words = local
+          .split(RegExp(r'[._-]+'))
+          .where((word) => word.trim().isNotEmpty)
+          .map((word) {
+            final clean = word.trim();
+            return clean[0].toUpperCase() + clean.substring(1).toLowerCase();
+          })
+          .toList();
+      if (words.isNotEmpty) return words.join(' ');
+    }
+
+    return 'Ahmad Nizam';
   }
 }

@@ -37,3 +37,26 @@ Map: google_maps_flutter
 File upload: file_picker
 Push notifications: firebase_messaging
 Font: Poppins (Google Fonts)
+
+## Current Implementation
+
+- Staff dashboard, attendance, requests, documents, notifications, profile
+- Admin dashboard, approvals, team attendance, reports, employee management
+- Attendance history, detail, correction request, shift schedule
+- Leave balance detail, request status tracker, document expiry / renewal
+- Department dashboard, payroll prep, holiday management, role access management
+- Dark mode support
+- App version display from `pubspec.yaml`
+
+## Notes
+
+- the current login and data layer still use mock responses in `lib/api/api_client.dart`
+- emails containing `admin` will open the admin flow, other valid emails open the staff flow
+- production auth and backend integration can be connected later
+
+## Run Locally
+
+```bash
+flutter pub get
+flutter run
+```

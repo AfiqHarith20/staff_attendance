@@ -49,7 +49,7 @@ const Map<String, String> en_US = {
   'home': 'Home',
   'attendance': 'Attendance',
   'scanner': 'Scanner',
-  'other': 'Other',
+  'other': 'More',
   'profile': 'Profile',
   'sign_out': 'Sign out',
   'upload_mc': 'Upload MC/Medical',

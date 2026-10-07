@@ -49,7 +49,7 @@ const Map<String, String> my_MY = {
   'home': 'Laman Utama',
   'attendance': 'Kehadiran',
   'scanner': 'Pengimbas',
-  'other': 'Lain-lain',
+  'other': 'Lagi',
   'profile': 'Profil',
   'sign_out': 'Log keluar',
   'upload_mc': 'Muat naik MC/Perubatan',

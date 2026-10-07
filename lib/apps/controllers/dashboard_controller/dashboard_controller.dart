@@ -15,6 +15,7 @@ class AnnouncementItem {
   final String title;
   final String when;
   final String? team;
+  final bool isUnread;
 
   const AnnouncementItem({
     required this.type,
@@ -22,6 +23,7 @@ class AnnouncementItem {
     required this.title,
     required this.when,
     this.team,
+    this.isUnread = false,
   });
 }
 
@@ -30,16 +32,20 @@ class LeaveBalance {
   final String labelKey; // translation key
   final int taken;
   final int total;
+  final int pending;
   final int colorValue; // ARGB
 
   const LeaveBalance({
     required this.labelKey,
     required this.taken,
     required this.total,
+    this.pending = 0,
     required this.colorValue,
   });
 
   double get ratio => total == 0 ? 0.0 : (taken / total).clamp(0.0, 1.0);
+  int get remaining => (total - taken).clamp(0, total);
+  bool get isLowBalance => remaining <= 3;
 }
 
 // ── Upcoming leave item ───────────────────────────────────────────────────
@@ -55,6 +61,36 @@ class UpcomingLeave {
   });
 }
 
+class PendingApprovalSummary {
+  final String label;
+  final String subtitle;
+  final int count;
+  final int colorValue;
+
+  const PendingApprovalSummary({
+    required this.label,
+    required this.subtitle,
+    required this.count,
+    required this.colorValue,
+  });
+}
+
+class StatusSnapshot {
+  final String title;
+  final String subtitle;
+  final String status;
+  final int accentColorValue;
+  final String route;
+
+  const StatusSnapshot({
+    required this.title,
+    required this.subtitle,
+    required this.status,
+    required this.accentColorValue,
+    required this.route,
+  });
+}
+
 // ── Controller ─────────────────────────────────────────────────────────────
 class DashboardController extends GetxController {
   // Live clock
@@ -62,7 +98,18 @@ class DashboardController extends GetxController {
   Timer? _clockTimer;
 
   // User info (from storage)
-  String get userName => GetStorage().read<String>('user_name') ?? 'Staff';
+  bool get isAdmin =>
+      (GetStorage().read<String>('user_role') ?? 'staff').toLowerCase() ==
+      'admin';
+
+  String get userName {
+    final box = GetStorage();
+    final storedName = box.read<String>('user_name')?.trim();
+    if (storedName != null && storedName.isNotEmpty) return storedName;
+
+    return 'Ahmad Nizam';
+  }
+
   String get userInitials {
     final parts = userName
         .trim()
@@ -88,12 +135,14 @@ class DashboardController extends GetxController {
       title: "Happy Birthday, Siti Rahmah!",
       when: 'Today',
       team: 'Operations Team',
+      isUnread: true,
     ),
     const AnnouncementItem(
       type: 'holiday',
       badge: '🇲🇾 PUBLIC HOLIDAY',
       title: 'Hari Raya Aidilfitri',
       when: 'In 5 days · 7–8 Apr 2026',
+      isUnread: false,
     ),
   ].obs;
 
@@ -101,20 +150,23 @@ class DashboardController extends GetxController {
   final leaveBalances = <LeaveBalance>[
     const LeaveBalance(
       labelKey: 'annual_leave_short',
-      taken: 12,
-      total: 20,
+      taken: 6,
+      total: 14,
+      pending: 2,
       colorValue: 0xFF2196F3,
     ),
     const LeaveBalance(
       labelKey: 'medical_leave',
       taken: 2,
       total: 14,
+      pending: 0,
       colorValue: 0xFF4CAF50,
     ),
     const LeaveBalance(
       labelKey: 'emergency_leave',
       taken: 2,
       total: 6,
+      pending: 1,
       colorValue: 0xFFFF9800,
     ),
   ].obs;
@@ -130,6 +182,107 @@ class DashboardController extends GetxController {
       title: 'Medical Leave',
       period: '22 Apr 2026',
       status: 'Pending',
+    ),
+  ].obs;
+
+  final pendingApprovals = <PendingApprovalSummary>[
+    const PendingApprovalSummary(
+      label: 'Leave approvals',
+      subtitle: 'Requests waiting for manager review',
+      count: 2,
+      colorValue: 0xFF185FA5,
+    ),
+    const PendingApprovalSummary(
+      label: 'Claim review',
+      subtitle: 'Claims still pending finance review',
+      count: 1,
+      colorValue: 0xFF16A34A,
+    ),
+    const PendingApprovalSummary(
+      label: 'Document follow-up',
+      subtitle: 'Supporting files missing verification',
+      count: 3,
+      colorValue: 0xFFF59E0B,
+    ),
+  ].obs;
+
+  final adminStats = <PendingApprovalSummary>[
+    const PendingApprovalSummary(
+      label: 'Present',
+      subtitle: 'Clocked in today',
+      count: 18,
+      colorValue: 0xFF16A34A,
+    ),
+    const PendingApprovalSummary(
+      label: 'Late',
+      subtitle: 'Arrived after shift start',
+      count: 3,
+      colorValue: 0xFFF59E0B,
+    ),
+    const PendingApprovalSummary(
+      label: 'Absent',
+      subtitle: 'No attendance record',
+      count: 2,
+      colorValue: 0xFFDC2626,
+    ),
+    const PendingApprovalSummary(
+      label: 'On leave',
+      subtitle: 'Approved leave today',
+      count: 4,
+      colorValue: 0xFF185FA5,
+    ),
+    const PendingApprovalSummary(
+      label: 'Pending approvals',
+      subtitle: 'Waiting for action',
+      count: 7,
+      colorValue: 0xFF7F77DD,
+    ),
+    const PendingApprovalSummary(
+      label: 'Missing checkout',
+      subtitle: 'Need follow-up',
+      count: 5,
+      colorValue: 0xFFEA580C,
+    ),
+  ].obs;
+
+  final todayExceptions = <StatusSnapshot>[
+    const StatusSnapshot(
+      title: 'Siti Rahmah checked in late',
+      subtitle: '9:22 AM · 22 minutes after shift start',
+      status: 'Late',
+      accentColorValue: 0xFFF59E0B,
+      route: Routes.teamAttendance,
+    ),
+    const StatusSnapshot(
+      title: 'Farid Hakim has no record',
+      subtitle: 'Sales · no check-in detected',
+      status: 'Absent',
+      accentColorValue: 0xFFDC2626,
+      route: Routes.teamAttendance,
+    ),
+    const StatusSnapshot(
+      title: 'Daniel Tan working remotely',
+      subtitle: 'Approved WFH · location verified',
+      status: 'Remote',
+      accentColorValue: 0xFF7F77DD,
+      route: Routes.teamAttendance,
+    ),
+  ].obs;
+
+  final latestStatuses = <StatusSnapshot>[
+    const StatusSnapshot(
+      title: 'Annual Leave · 12-14 Aug 2026',
+      subtitle: 'Submitted on 21 Jul 2026',
+      status: 'Pending manager approval',
+      accentColorValue: 0xFF185FA5,
+      route: Routes.timeOff,
+    ),
+    const StatusSnapshot(
+      title: 'Medical Claim · RM 84.50',
+      subtitle: 'Receipt uploaded on 10 Jul 2026',
+      status: 'Ready for finance review',
+      accentColorValue: 0xFF16A34A,
+      route: Routes.myDocuments,
     ),
   ].obs;
 
@@ -199,6 +352,10 @@ class DashboardController extends GetxController {
       Get.offNamed(Routes.app, arguments: {'tabIndex': 1});
     }
   }
+
+  void openRoute(String route) => Get.toNamed(route);
+
+  void openAnnouncements() => Get.toNamed(Routes.announcements);
 
   @override
   void onInit() {

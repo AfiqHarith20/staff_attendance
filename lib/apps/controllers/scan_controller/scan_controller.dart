@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/widgets/app_toast.dart';
 
 import '../../models/document_model.dart';
 
@@ -279,13 +278,9 @@ class ScanController extends GetxController {
             inRange: actualInRange,
           ),
         );
-        Get.snackbar(
-          '✅ Check-in (mock)',
+        AppToast.success(
+          'Check-in (mock)',
           '${distanceM.value.toStringAsFixed(0)}m dari pejabat',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF16A34A),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
         );
         return;
       }
@@ -321,14 +316,7 @@ class ScanController extends GetxController {
           inRange: actualInRange,
         ),
       );
-      Get.snackbar(
-        '✅ Check-in',
-        respMsg ?? 'Checked in',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF16A34A),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
-      );
+      AppToast.success('Check-in', respMsg ?? 'Checked in');
     } on DioException catch (e) {
       final errMsg = e.response?.data != null
           ? e.response?.data['message'] as String?
@@ -339,23 +327,11 @@ class ScanController extends GetxController {
         checkInMessage(errMsg);
       } else {
         checkInStatus(CheckInStatus.inRange);
-        Get.snackbar(
-          '❌ Check-in failed',
-          errMsg ?? 'Please try again',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFFDC2626),
-          colorText: Colors.white,
-        );
+        AppToast.failed('Check-in failed', errMsg ?? 'Please try again');
       }
     } catch (_) {
       checkInStatus(CheckInStatus.inRange);
-      Get.snackbar(
-        '❌ Error',
-        'Unexpected error. Please try again.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFDC2626),
-        colorText: Colors.white,
-      );
+      AppToast.failed('Error', 'Unexpected error. Please try again.');
     } finally {
       isCheckingIn(false);
     }
@@ -367,12 +343,9 @@ class ScanController extends GetxController {
   Future<void> checkOut() async {
     // Prevent check-out if a check-in hasn't happened yet.
     if (!checkedInToday.value) {
-      Get.snackbar(
-        '⚠️',
+      AppToast.pending(
+        'Check-in required',
         'Please check in before checking out.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFF59E0B),
-        colorText: Colors.white,
       );
       return;
     }
@@ -396,14 +369,7 @@ class ScanController extends GetxController {
             inRange: actualInRange,
           ),
         );
-        Get.snackbar(
-          '✅ Check-out (mock)',
-          'Checked out (mock)',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF16A34A),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
-        );
+        AppToast.success('Check-out (mock)', 'Checked out (mock)');
         return;
       }
 
@@ -433,31 +399,12 @@ class ScanController extends GetxController {
           inRange: actualInRange,
         ),
       );
-      Get.snackbar(
-        '✅ Check-out',
-        respMsg ?? 'Checked out',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF16A34A),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
-      );
+      AppToast.success('Check-out', respMsg ?? 'Checked out');
     } on DioException catch (e) {
       final msg = e.response?.data['message'] as String?;
-      Get.snackbar(
-        '❌ Check-out failed',
-        msg ?? 'Please try again',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFDC2626),
-        colorText: Colors.white,
-      );
+      AppToast.failed('Check-out failed', msg ?? 'Please try again');
     } catch (_) {
-      Get.snackbar(
-        '❌ Error',
-        'Unexpected error. Please try again.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFFDC2626),
-        colorText: Colors.white,
-      );
+      AppToast.failed('Error', 'Unexpected error. Please try again.');
     } finally {
       isCheckingIn(false);
     }
@@ -547,12 +494,9 @@ class ScanController extends GetxController {
       );
       documents.insert(0, doc);
 
-      Get.snackbar(
-        '📎 Upload berjaya',
+      AppToast.pending(
+        'Upload berjaya',
         '${doc.typeLabel} submitted for review',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF185FA5),
-        colorText: Colors.white,
       );
     } on DioException catch (e) {
       uploadError(e.response?.data['message'] as String? ?? 'Upload failed.');
@@ -584,7 +528,6 @@ class ScanController extends GetxController {
   }
 
   String get remainingLabel {
-    final remaining = (_radiusM - distanceM.value).clamp(0, _radiusM);
     if (isInRange) return distanceLabel;
     return '${(distanceM.value - _radiusM).toStringAsFixed(0)}m too far';
   }

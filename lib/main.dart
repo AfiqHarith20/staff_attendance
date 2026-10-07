@@ -5,16 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:staff_attendance/apps/routes/routes.dart';
-import 'package:staff_attendance/apps/themes/app_colors.dart';
 import 'package:staff_attendance/apps/themes/app_themes.dart';
 import 'package:staff_attendance/apps/controllers/theme_controller/theme_controller.dart';
 import 'package:staff_attendance/language/String.dart';
+import 'package:toastification/toastification.dart';
 
 import 'firebase_options.dart';
 import 'core/services/storage_service.dart';
-import 'core/bindings/app_bindings.dart';
+import 'apps/bindings/app_bindings.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -32,7 +31,7 @@ Future<void> main() async {
     );
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e) {
-    print('❌ Firebase init failed: $e');
+    debugPrint('Firebase init failed: $e');
   }
 
   SystemChrome.setPreferredOrientations([
@@ -71,7 +70,7 @@ Future<void> _initFCM() async {
       await StorageService.saveFcmToken(token);
     });
   } catch (e) {
-    print('⚠️ FCM init failed: $e');
+    debugPrint('FCM init failed: $e');
   }
 }
 
@@ -114,53 +113,55 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      useInheritedMediaQuery: true,
-      designSize: const Size(414, 896),
-      builder: (_, child) => GetMaterialApp(
-        title: 'Attendance App',
-        // Translations (GetX)
-        translations: AppTranslations(),
-        // Do not hardcode `locale` here; `LocaleController` will call
-        // `Get.updateLocale(...)` during startup to restore persisted locale.
-        fallbackLocale: const Locale('en', 'US'),
-        debugShowCheckedModeBanner: false,
-        navigatorKey: Get.key,
-        // Provide base themes for the app. Actual animated switching is
-        // handled by the AnimatedTheme widget in the inner builder so
-        // theme changes lerp smoothly.
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        // Keep themeMode controlled by ThemeController for semantics
-        // but visual transitions are animated below.
-        themeMode: ThemeMode.light,
-        initialBinding: AppBindings(),
-        initialRoute: Routes.splash,
-        getPages: Routes.list,
-        builder: (context, widget) {
-          ScreenUtil.init(context);
-          // AnimatedTheme needs to run after bindings are initialized,
-          // so use an Obx/Reactive lookup here (ThemeController is
-          // registered in AppBindings).
-          return Obx(() {
-            final themeCtrl = Get.find<ThemeController>();
-            final activeTheme = themeCtrl.isDark
-                ? AppTheme.dark
-                : AppTheme.light;
+    return ToastificationWrapper(
+      child: ScreenUtilInit(
+        useInheritedMediaQuery: true,
+        designSize: const Size(414, 896),
+        builder: (_, child) => GetMaterialApp(
+          title: 'Attendance App',
+          // Translations (GetX)
+          translations: AppTranslations(),
+          // Do not hardcode `locale` here; `LocaleController` will call
+          // `Get.updateLocale(...)` during startup to restore persisted locale.
+          fallbackLocale: const Locale('en', 'US'),
+          debugShowCheckedModeBanner: false,
+          navigatorKey: Get.key,
+          // Provide base themes for the app. Actual animated switching is
+          // handled by the AnimatedTheme widget in the inner builder so
+          // theme changes lerp smoothly.
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          // Keep themeMode controlled by ThemeController for semantics
+          // but visual transitions are animated below.
+          themeMode: ThemeMode.light,
+          initialBinding: AppBindings(),
+          initialRoute: Routes.splash,
+          getPages: Routes.list,
+          builder: (context, widget) {
+            ScreenUtil.init(context);
+            // AnimatedTheme needs to run after bindings are initialized,
+            // so use an Obx/Reactive lookup here (ThemeController is
+            // registered in AppBindings).
+            return Obx(() {
+              final themeCtrl = Get.find<ThemeController>();
+              final activeTheme = themeCtrl.isDark
+                  ? AppTheme.dark
+                  : AppTheme.light;
 
-            return AnimatedTheme(
-              data: activeTheme,
-              duration: const Duration(milliseconds: 360),
-              curve: Curves.easeInOut,
-              child: MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: const TextScaler.linear(1.0)),
-                child: widget!,
-              ),
-            );
-          });
-        },
+              return AnimatedTheme(
+                data: activeTheme,
+                duration: const Duration(milliseconds: 360),
+                curve: Curves.easeInOut,
+                child: MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: const TextScaler.linear(1.0)),
+                  child: widget!,
+                ),
+              );
+            });
+          },
+        ),
       ),
     );
   }
