@@ -52,9 +52,9 @@ class TimeOffScreen extends GetView<TimeOffController> {
         onPressed: () => Get.toNamed(Routes.applyLeave),
         backgroundColor: const Color(0xFF185FA5),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Apply Leave',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        label: Text(
+          'apply_leave'.tr,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -78,7 +78,7 @@ class _AppBar extends GetView<TimeOffController> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Time Off',
+              'time_off'.tr,
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 20,
@@ -221,7 +221,7 @@ class _BalanceSection extends GetView<TimeOffController> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Leave balance',
+              'leave_balance_title'.tr,
               style: TextStyle(
                 color: isDark
                     ? const Color(0xFF94A3B8)
@@ -233,7 +233,7 @@ class _BalanceSection extends GetView<TimeOffController> {
             ),
             const SizedBox(height: 14),
             _BalanceBar(
-              label: 'Annual',
+              label: 'annual_leave_short'.tr,
               used: b.annualUsed,
               total: b.annualTotal,
               color: const Color.fromARGB(255, 82, 149, 216),
@@ -241,7 +241,7 @@ class _BalanceSection extends GetView<TimeOffController> {
             ),
             const SizedBox(height: 10),
             _BalanceBar(
-              label: 'Medical',
+              label: 'medical'.tr,
               used: b.medicalUsed,
               total: b.medicalTotal,
               color: const Color(0xFFDC2626),
@@ -249,7 +249,7 @@ class _BalanceSection extends GetView<TimeOffController> {
             ),
             const SizedBox(height: 10),
             _BalanceBar(
-              label: 'Emergency',
+              label: 'emergency'.tr,
               used: b.emergencyUsed,
               total: b.emergencyTotal,
               color: const Color(0xFFF59E0B),
@@ -337,10 +337,10 @@ class _StatusSummary extends GetView<TimeOffController> {
   Widget build(BuildContext context) {
     return Obx(() {
       final statuses = [
-        (LeaveStatus.pending, 'Pending', 0xFFF59E0B),
-        (LeaveStatus.approved, 'Approved', 0xFF16A34A),
-        (LeaveStatus.rejected, 'Rejected', 0xFFDC2626),
-        (LeaveStatus.cancelled, 'Cancelled', 0xFF64748B),
+        (LeaveStatus.pending, 'pending', 0xFFF59E0B),
+        (LeaveStatus.approved, 'approved', 0xFF16A34A),
+        (LeaveStatus.rejected, 'rejected', 0xFFDC2626),
+        (LeaveStatus.cancelled, 'cancelled', 0xFF64748B),
       ];
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -391,7 +391,7 @@ class _StatusSummary extends GetView<TimeOffController> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                s.$2,
+                                s.$2.tr,
                                 style: TextStyle(
                                   color: isActive
                                       ? color
@@ -458,7 +458,7 @@ class _StatusSummary extends GetView<TimeOffController> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                statuses.last.$2,
+                                statuses.last.$2.tr,
                                 style: TextStyle(
                                   color:
                                       controller.selectedStatus.value ==
@@ -492,10 +492,10 @@ class _Filters extends GetView<TimeOffController> {
   const _Filters({required this.isDark});
 
   static const _types = [
-    (LeaveType.annual, 'Annual'),
-    (LeaveType.medical, 'Medical'),
-    (LeaveType.emergency, 'Emergency'),
-    (LeaveType.unpaid, 'Unpaid'),
+    (LeaveType.annual, 'annual'),
+    (LeaveType.medical, 'medical'),
+    (LeaveType.emergency, 'emergency'),
+    (LeaveType.unpaid, 'unpaid'),
   ];
 
   @override
@@ -508,7 +508,7 @@ class _Filters extends GetView<TimeOffController> {
           children: [
             // All chip
             _TypeChip(
-              label: 'All types',
+              label: 'all_types'.tr,
               isActive: controller.selectedType.value == null,
               color: const Color(0xFF185FA5),
               isDark: isDark,
@@ -516,7 +516,7 @@ class _Filters extends GetView<TimeOffController> {
             ),
             ..._types.map(
               (t) => _TypeChip(
-                label: t.$2,
+                label: t.$2.tr,
                 isActive: controller.selectedType.value == t.$1,
                 color: Color(LeaveModel.typeColors[t.$1]!),
                 isDark: isDark,
@@ -602,7 +602,7 @@ class _ListHeader extends GetView<TimeOffController> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Applications',
+              'applications'.tr,
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 14,
@@ -731,7 +731,7 @@ class _LeaveCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            leave.typeLabel,
+                            leave.typeLabel.tr,
                             style: TextStyle(
                               color: typeColor,
                               fontSize: 10,
@@ -750,7 +750,7 @@ class _LeaveCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            leave.statusLabel,
+                            leave.statusLabel.tr,
                             style: TextStyle(
                               color: statusColor,
                               fontSize: 10,
@@ -899,7 +899,7 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  leave.typeLabel,
+                  leave.typeLabel.tr,
                   style: TextStyle(
                     color: typeColor,
                     fontSize: 12,
@@ -918,7 +918,7 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  leave.statusLabel,
+                  leave.statusLabel.tr,
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 12,
@@ -934,7 +934,7 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
           // Detail rows
           _DetailRow(
             icon: Icons.calendar_today_rounded,
-            label: 'Date',
+            label: 'date'.tr,
             value: leave.totalDays == 1
                 ? DateFormat('EEEE, d MMM yyyy').format(leave.startDate)
                 : '${DateFormat('d MMM yyyy').format(leave.startDate)} – '
@@ -943,26 +943,26 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
           ),
           _DetailRow(
             icon: Icons.today_rounded,
-            label: 'Duration',
+            label: 'duration'.tr,
             value: '${leave.totalDays} day${leave.totalDays > 1 ? 's' : ''}',
             isDark: isDark,
           ),
           _DetailRow(
             icon: Icons.send_rounded,
-            label: 'Applied',
+            label: 'applied_status'.tr,
             value: DateFormat('d MMM yyyy, h:mm a').format(leave.appliedAt),
             isDark: isDark,
           ),
           if (leave.approvedBy != null)
             _DetailRow(
               icon: Icons.verified_rounded,
-              label: 'Approved by',
+              label: 'approved_by'.tr,
               value: leave.approvedBy!,
               isDark: isDark,
             ),
           _DetailRow(
             icon: Icons.notes_rounded,
-            label: 'Reason',
+            label: 'reason'.tr,
             value: leave.reason,
             isDark: isDark,
             multiLine: true,
@@ -970,7 +970,7 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
           if (leave.rejectionNote != null)
             _DetailRow(
               icon: Icons.info_outline_rounded,
-              label: 'Rejection note',
+              label: 'rejection_note'.tr,
               value: leave.rejectionNote!,
               isDark: isDark,
               valueColor: const Color(0xFFDC2626),
@@ -1004,9 +1004,9 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
                             color: Color(0xFFDC2626),
                           ),
                         )
-                      : const Text(
-                          'Cancel Application',
-                          style: TextStyle(
+                      : Text(
+                          'cancel_application'.tr,
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1028,14 +1028,14 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Cancel leave?',
+          'cancel_leave_confirm_title'.tr,
           style: TextStyle(
             color: isDark ? Colors.white : const Color(0xFF0F172A),
             fontWeight: FontWeight.w700,
           ),
         ),
         content: Text(
-          'This will cancel your ${leave.typeLabel} application. This action cannot be undone.',
+          'cancel_leave_body'.trParams({'type': leave.typeLabel.tr}),
           style: TextStyle(
             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             fontSize: 13,
@@ -1044,9 +1044,9 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
         actions: [
           TextButton(
             onPressed: Get.back,
-            child: const Text(
-              'Keep',
-              style: TextStyle(color: Color(0xFF64748B)),
+            child: Text(
+              'keep'.tr,
+              style: const TextStyle(color: Color(0xFF64748B)),
             ),
           ),
           TextButton(
@@ -1054,9 +1054,9 @@ class _LeaveDetailSheet extends GetView<TimeOffController> {
               Get.back(); // close dialog
               controller.cancelLeave(leave.id);
             },
-            child: const Text(
-              'Cancel leave',
-              style: TextStyle(
+            child: Text(
+              'cancel_leave_title'.tr,
+              style: const TextStyle(
                 color: Color(0xFFDC2626),
                 fontWeight: FontWeight.w600,
               ),
@@ -1152,7 +1152,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'No leave applications',
+            'no_leave_applications'.tr,
             style: TextStyle(
               color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
               fontSize: 15,
@@ -1161,7 +1161,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Tap "Apply Leave" below to submit one',
+            'no_leave_hint'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),

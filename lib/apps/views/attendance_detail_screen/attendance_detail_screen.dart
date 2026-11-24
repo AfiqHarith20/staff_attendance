@@ -16,8 +16,8 @@ class AttendanceDetailScreen extends StatelessWidget {
     if (item == null) {
       return Scaffold(
         backgroundColor: bg,
-        appBar: AppBar(title: const Text('Attendance Detail')),
-        body: const Center(child: Text('Record not found')),
+        appBar: AppBar(title: Text('attendance_detail'.tr)),
+        body: Center(child: Text('record_not_found'.tr)),
       );
     }
 
@@ -34,7 +34,7 @@ class AttendanceDetailScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Attendance Detail',
+                    'attendance_detail'.tr,
                     style: TextStyle(
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                       fontSize: 20,
@@ -45,7 +45,7 @@ class AttendanceDetailScreen extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => Get.toNamed(Routes.correctionRequest),
                   icon: const Icon(Icons.edit_calendar_rounded, size: 18),
-                  label: const Text('Correct'),
+                  label: Text('correct'.tr),
                 ),
               ],
             ),
@@ -88,7 +88,7 @@ class AttendanceDetailScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          item.statusLabel,
+                          item.statusLabel.tr,
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 11,
@@ -100,44 +100,52 @@ class AttendanceDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   _DetailRow(
-                    label: 'Check-in',
+                    label: 'check_in'.tr,
                     value: _time(item.checkInAt),
                     isDark: isDark,
                   ),
                   _DetailRow(
-                    label: 'Check-out',
+                    label: 'check_out'.tr,
                     value: _time(item.checkOutAt),
                     isDark: isDark,
                   ),
                   _DetailRow(
-                    label: 'Working hours',
+                    label: 'working_hours'.tr,
                     value: item.workingHoursLabel,
                     isDark: isDark,
                   ),
                   _DetailRow(
-                    label: 'Check-in location',
-                    value: item.checkInLocation,
+                    label: 'checkin_location'.tr,
+                    value: item.checkInLocation ?? 'not_recorded'.tr,
                     isDark: isDark,
                   ),
                   _DetailRow(
-                    label: 'Check-out location',
-                    value: item.checkOutLocation,
+                    label: 'checkin_distance'.tr,
+                    value: '${item.checkInDistanceM.toStringAsFixed(0)}m',
                     isDark: isDark,
                   ),
+                  if (item.checkOutAt != null) ...[
+                    _DetailRow(
+                      label: 'checkout_location'.tr,
+                      value: item.checkOutLocation ?? 'not_recorded'.tr,
+                      isDark: isDark,
+                    ),
+                    if (item.checkOutDistanceM != null)
+                      _DetailRow(
+                        label: 'checkout_distance'.tr,
+                        value: '${item.checkOutDistanceM!.toStringAsFixed(0)}m',
+                        isDark: isDark,
+                      ),
+                  ],
                   _DetailRow(
-                    label: 'Distance from office',
-                    value: '${item.distanceM.toStringAsFixed(0)}m',
-                    isDark: isDark,
-                  ),
-                  _DetailRow(
-                    label: 'Audit status',
+                    label: 'audit_status'.tr,
                     value: item.auditStatus,
                     isDark: isDark,
                   ),
-                  if (item.remarks.isNotEmpty)
+                  if ((item.remarks ?? '').isNotEmpty)
                     _DetailRow(
-                      label: 'Remarks',
-                      value: item.remarks,
+                      label: 'remarks'.tr,
+                      value: item.remarks!,
                       isDark: isDark,
                     ),
                 ],
@@ -161,7 +169,7 @@ class AttendanceDetailScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'GPS and audit information are retained for HR verification.',
+                      'gps_audit_note'.tr,
                       style: TextStyle(
                         color: isDark
                             ? const Color(0xFFCBD5E1)

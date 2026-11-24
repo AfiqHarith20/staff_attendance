@@ -242,8 +242,8 @@ class reasonField extends StatelessWidget {
         ),
       ),
       validator: (v) {
-        if (v == null || v.trim().isEmpty) return 'Reason is required';
-        if (v.trim().length < 10) return 'Please provide more detail';
+        if (v == null || v.trim().isEmpty) return 'reason_required'.tr;
+        if (v.trim().length < 10) return 'reason_too_short'.tr;
         return null;
       },
     );

@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/apps/routes/routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 
@@ -34,12 +36,21 @@ class HelpSupportController extends GetxController {
     }
     try {
       isSubmitting(true);
-      await ApiClient.instance.post('/support/issues', data: {'message': text});
+      await ApiClient.instance.post(ApiList.supportIssues, data: {'message': text});
       issueController.clear();
       AppToast.success(
         'Issue reported',
         'HR support has received your message.',
       );
+    } on DioException catch (e) {
+      debugPrint('HELP_SUPPORT DioException: ${e.type} | ${e.response?.statusCode} | ${e.response?.data}');
+      AppToast.failed(
+        'Report failed',
+        e.response?.data?['message'] as String? ?? 'Failed to submit. Try again.',
+      );
+    } catch (e) {
+      debugPrint('HELP_SUPPORT error: $e');
+      AppToast.failed('Report failed', 'An unexpected error occurred.');
     } finally {
       isSubmitting(false);
     }

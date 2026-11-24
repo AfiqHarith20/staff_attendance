@@ -1,6 +1,9 @@
 import 'package:get/get.dart';
 import 'package:staff_attendance/apps/bindings/apply_leave_binding.dart';
 import 'package:staff_attendance/apps/bindings/apply_overtime_binding.dart';
+import 'package:staff_attendance/apps/bindings/claims_binding.dart';
+import 'package:staff_attendance/apps/bindings/overtime_binding.dart';
+import 'package:staff_attendance/apps/bindings/remote_work_binding.dart';
 import 'package:staff_attendance/apps/bindings/approval_inbox_binding.dart';
 import 'package:staff_attendance/apps/bindings/attendance_history_binding.dart';
 import 'package:staff_attendance/apps/bindings/calendar_binding.dart';
@@ -13,12 +16,34 @@ import 'package:staff_attendance/apps/bindings/notifications_binding.dart';
 import 'package:staff_attendance/apps/bindings/payslip_binding.dart';
 import 'package:staff_attendance/apps/bindings/remote_work_request_binding.dart';
 import 'package:staff_attendance/apps/bindings/shift_schedule_binding.dart';
-import 'package:staff_attendance/apps/bindings/submit_claim_binding.dart';
 import 'package:staff_attendance/apps/bindings/team_attendance_binding.dart';
+import 'package:staff_attendance/apps/bindings/job_board_binding.dart';
+import 'package:staff_attendance/apps/bindings/leave_balance_binding.dart';
+import 'package:staff_attendance/apps/bindings/my_assets_binding.dart';
+import 'package:staff_attendance/apps/bindings/performance_binding.dart';
+import 'package:staff_attendance/apps/bindings/shift_swap_binding.dart';
+import 'package:staff_attendance/apps/bindings/signature_requests_binding.dart';
 import 'package:staff_attendance/apps/bindings/time_off_binding.dart';
+import 'package:staff_attendance/apps/bindings/training_records_binding.dart';
 import 'package:staff_attendance/apps/bindings/work_hours_summary_binding.dart';
 import 'package:staff_attendance/apps/bindings/announcements_binding.dart';
+import 'package:staff_attendance/apps/bindings/benefits_binding.dart';
+import 'package:staff_attendance/apps/bindings/employment_history_binding.dart';
+import 'package:staff_attendance/apps/bindings/qr_generate_binding.dart';
+import 'package:staff_attendance/apps/bindings/admin_dashboard_binding.dart';
+import 'package:staff_attendance/apps/bindings/employee_directory_binding.dart';
+import 'package:staff_attendance/apps/bindings/admin_announcement_binding.dart';
+import 'package:staff_attendance/apps/bindings/admin_assets_binding.dart';
+import 'package:staff_attendance/apps/bindings/team_leave_binding.dart';
+import 'package:staff_attendance/apps/views/admin_dashboard_screen/admin_dashboard_screen.dart';
+import 'package:staff_attendance/apps/views/employee_directory_screen/employee_directory_screen.dart';
+import 'package:staff_attendance/apps/views/admin_announcements_screen/admin_announcements_screen.dart';
+import 'package:staff_attendance/apps/views/admin_assets_screen/admin_assets_screen.dart';
+import 'package:staff_attendance/apps/views/team_leave_screen/team_leave_screen.dart';
 import 'package:staff_attendance/apps/views/approvals/approval_inbox_screen.dart';
+import 'package:staff_attendance/apps/views/benefits_screen/benefits_screen.dart';
+import 'package:staff_attendance/apps/views/employment_history_screen/employment_history_screen.dart';
+import 'package:staff_attendance/apps/views/qr_generate_screen/qr_generate_screen.dart';
 import 'package:staff_attendance/apps/views/admin/admin_report_detail_screens.dart';
 import 'package:staff_attendance/apps/views/admin/admin_reports_screen.dart';
 import 'package:staff_attendance/apps/views/admin/admin_settings_screen.dart';
@@ -50,12 +75,21 @@ import 'package:staff_attendance/apps/views/home/dashboard_screen/dashboard_scre
 import 'package:staff_attendance/apps/views/home/bottom_nav/bottom_nav.dart';
 import 'package:staff_attendance/apps/views/home/my_attendance_screen/my_attendance_screen.dart';
 import 'package:staff_attendance/apps/views/documents/document_expiry_renewal_screen.dart';
+import 'package:staff_attendance/apps/views/job_board_screen/job_board_screen.dart';
+import 'package:staff_attendance/apps/views/my_assets_screen/my_assets_screen.dart';
+import 'package:staff_attendance/apps/views/performance_screen/performance_screen.dart';
 import 'package:staff_attendance/apps/views/requests/leave_balance_detail_screen.dart';
+import 'package:staff_attendance/apps/views/shift_swap_screen/shift_swap_screen.dart';
+import 'package:staff_attendance/apps/views/signature_requests_screen/signature_requests_screen.dart';
+import 'package:staff_attendance/apps/views/training_records_screen/training_records_screen.dart';
 import 'package:staff_attendance/apps/views/my_document_screen/my_document_screen.dart';
 import 'package:staff_attendance/apps/views/notifications_screen/notifications_screen.dart';
 import 'package:staff_attendance/apps/views/payslip_screen/payslip_screen.dart';
 import 'package:staff_attendance/apps/views/requests/request_status_tracker_screen.dart';
-import 'package:staff_attendance/apps/views/requests/remote_work_request_screen.dart';
+import 'package:staff_attendance/apps/views/claims_screen/claims_screen.dart';
+import 'package:staff_attendance/apps/views/requests/apply_remote_work_screen.dart';
+import 'package:staff_attendance/apps/views/overtime_screen/overtime_screen.dart';
+import 'package:staff_attendance/apps/views/remote_work_screen/remote_work_screen.dart';
 import 'package:staff_attendance/apps/views/shift_schedule_screen/shift_schedule_screen.dart';
 import 'package:staff_attendance/apps/views/splash_screen/splash_screen.dart';
 import 'package:staff_attendance/apps/views/attendance/team_attendance_screen.dart';
@@ -101,7 +135,10 @@ abstract class Routes {
   static const shiftAssignmentPlanner = '/shift-assignment-planner';
   static const timeOff = '/time-off';
   static const applyLeave = '/apply-leave';
+  static const overtime = '/overtime';
   static const applyOvertime = '/apply-overtime';
+  static const applyRemoteWork = '/apply-remote-work';
+  static const claims = '/claims';
   static const submitClaim = '/submit-claim';
   static const myDocuments = '/my-documents';
   static const paySlip = '/pay-slip';
@@ -109,6 +146,24 @@ abstract class Routes {
   static const organisation = '/organisation';
   static const companyPolicy = '/company-policy';
   static const announcements = '/announcements';
+  static const benefits = '/benefits';
+  static const employmentHistory = '/employment-history';
+  static const qrGenerate = '/qr-generate';
+  // ── Staff self-service ────────────────────────────────────────────────────
+  static const myAssets = '/my-assets';
+  static const trainingRecords = '/training-records';
+  static const shiftSwap = '/shift-swap';
+  static const performance = '/performance';
+  static const jobBoard = '/job-board';
+  static const signatureRequests = '/signature-requests';
+
+  // ── Admin/HR screens ─────────────────────────────────────────────────────
+  static const adminDashboard = '/admin-dashboard';
+  static const employeeDirectory = '/employee-directory';
+  static const adminAnnouncements = '/admin-announcements';
+  static const adminAssets = '/admin-assets';
+  static const teamLeave = '/team-leave';
+
   static const adminReports = '/admin-reports';
   static const monthlyAttendanceReport = '/admin-reports/monthly-attendance';
   static const latenessReport = '/admin-reports/lateness';
@@ -187,7 +242,12 @@ abstract class Routes {
     ),
     GetPage(
       name: Routes.remoteWorkRequest,
-      page: () => const RemoteWorkRequestScreen(),
+      page: () => const RemoteWorkScreen(),
+      binding: RemoteWorkBinding(),
+    ),
+    GetPage(
+      name: Routes.applyRemoteWork,
+      page: () => const ApplyRemoteWorkScreen(),
       binding: RemoteWorkRequestBinding(),
     ),
     GetPage(
@@ -211,6 +271,7 @@ abstract class Routes {
     GetPage(
       name: Routes.leaveBalanceDetail,
       page: () => const LeaveBalanceDetailScreen(),
+      binding: LeaveBalanceBinding(),
     ),
     GetPage(
       name: Routes.documentExpiryRenewal,
@@ -252,14 +313,24 @@ abstract class Routes {
       binding: ApplyLeaveBinding(),
     ),
     GetPage(
+      name: Routes.overtime,
+      page: () => const OvertimeScreen(),
+      binding: OvertimeBinding(),
+    ),
+    GetPage(
       name: applyOvertime,
       page: () => const ApplyOvertimeScreen(),
       binding: ApplyOvertimeBinding(),
     ),
     GetPage(
+      name: Routes.claims,
+      page: () => const ClaimsScreen(),
+      binding: ClaimsBinding(),
+    ),
+    GetPage(
       name: Routes.submitClaim,
       page: () => const SubmitClaimScreen(),
-      binding: SubmitClaimBinding(),
+      binding: ClaimsBinding(),
     ),
     GetPage(
       name: Routes.myDocuments,
@@ -282,6 +353,78 @@ abstract class Routes {
       name: announcements,
       page: () => const AnnouncementsScreen(),
       binding: AnnouncementsBinding(),
+    ),
+    GetPage(
+      name: qrGenerate,
+      page: () => const QRGenerateScreen(),
+      binding: QRGenerateBinding(),
+    ),
+    GetPage(
+      name: benefits,
+      page: () => const BenefitsScreen(),
+      binding: BenefitsBinding(),
+    ),
+    GetPage(
+      name: employmentHistory,
+      page: () => const EmploymentHistoryScreen(),
+      binding: EmploymentHistoryBinding(),
+    ),
+    // ── Staff self-service screens ───────────────────────────────────────────
+    GetPage(
+      name: myAssets,
+      page: () => const MyAssetsScreen(),
+      binding: MyAssetsBinding(),
+    ),
+    GetPage(
+      name: trainingRecords,
+      page: () => const TrainingRecordsScreen(),
+      binding: TrainingRecordsBinding(),
+    ),
+    GetPage(
+      name: shiftSwap,
+      page: () => const ShiftSwapScreen(),
+      binding: ShiftSwapBinding(),
+    ),
+    GetPage(
+      name: performance,
+      page: () => const PerformanceScreen(),
+      binding: PerformanceBinding(),
+    ),
+    GetPage(
+      name: jobBoard,
+      page: () => const JobBoardScreen(),
+      binding: JobBoardBinding(),
+    ),
+    GetPage(
+      name: signatureRequests,
+      page: () => const SignatureRequestsScreen(),
+      binding: SignatureRequestsBinding(),
+    ),
+    // ── Admin/HR screens ─────────────────────────────────────────────────────
+    GetPage(
+      name: adminDashboard,
+      page: () => const AdminDashboardScreen(),
+      binding: AdminDashboardBinding(),
+    ),
+    GetPage(
+      name: employeeDirectory,
+      page: () => const EmployeeDirectoryScreen(),
+      binding: EmployeeDirectoryBinding(),
+    ),
+    GetPage(
+      name: adminAnnouncements,
+      page: () => const AdminAnnouncementsScreen(),
+      binding: AdminAnnouncementBinding(),
+    ),
+    GetPage(
+      name: adminAssets,
+      page: () => const AdminAssetsScreen(),
+      binding: AdminAssetsBinding(),
+    ),
+    GetPage(
+      name: teamLeave,
+      page: () => const TeamLeaveScreen(),
+      binding: TeamLeaveBinding(),
     ),
     GetPage(name: adminReports, page: () => const AdminReportsScreen()),
     GetPage(

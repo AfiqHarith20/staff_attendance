@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../apps/models/calendar_event_model.dart';
@@ -43,7 +44,7 @@ class CalendarController extends GetxController {
       errorMsg('');
 
       final response = await ApiClient.instance.get(
-        '/calendar/events',
+        ApiList.calendarEvents,
         queryParameters: {
           'month': focusedDay.value.month,
           'year': focusedDay.value.year,

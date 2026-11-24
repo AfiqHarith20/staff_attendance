@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 import '../../../apps/models/leave_model.dart';
 
@@ -51,7 +52,7 @@ class TimeOffController extends GetxController {
   Future<void> _fetchLeaves() async {
     try {
       final response = await ApiClient.instance.get(
-        '/leave/my',
+        ApiList.leaveList,
         queryParameters: {'year': selectedYear.value},
       );
       leaves.assignAll(
@@ -59,22 +60,26 @@ class TimeOffController extends GetxController {
           (e) => LeaveModel.fromJson(e as Map<String, dynamic>),
         ),
       );
-    } catch (_) {}
+    } catch (e) {
+      errorMsg(ApiClient.extractError(e, fallback: 'fetch_failed'.tr));
+    }
   }
 
   Future<void> _fetchBalance() async {
     try {
-      final response = await ApiClient.instance.get('/leave/balance');
+      final response = await ApiClient.instance.get(ApiList.leaveBalance);
       balance(
         LeaveBalance.fromJson(response.data['data'] as Map<String, dynamic>),
       );
-    } catch (_) {}
+    } catch (_) {
+      // Balance silently falls back to defaults; errorMsg is set by _fetchLeaves
+    }
   }
 
   Future<void> cancelLeave(String id) async {
     try {
       isCancelling(true);
-      await ApiClient.instance.post('/leave/$id/cancel');
+      await ApiClient.instance.post(ApiList.leaveCancel(id));
       // Optimistically update status locally
       final idx = leaves.indexWhere((l) => l.id == id);
       if (idx != -1) {
@@ -92,8 +97,11 @@ class TimeOffController extends GetxController {
         leaves.refresh();
       }
       Get.back(); // close detail sheet
-    } catch (_) {
-      AppToast.failed('Error', 'Failed to cancel. Try again.');
+    } catch (e) {
+      AppToast.failed(
+        'unavailable'.tr,
+        ApiClient.extractError(e, fallback: 'cancel_failed'.tr),
+      );
     } finally {
       isCancelling(false);
     }

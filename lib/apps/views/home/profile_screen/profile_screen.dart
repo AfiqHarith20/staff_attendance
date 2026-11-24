@@ -43,6 +43,16 @@ class ProfileScreen extends StatelessWidget {
               Center(
                 child: Obx(() {
                   final imageBytes = profileCtrl.profileImageBytes;
+                  final url = profileCtrl.avatarUrl.value;
+                  final hasNetwork = url != null && url.isNotEmpty;
+
+                  ImageProvider? bgImage;
+                  if (imageBytes != null) {
+                    bgImage = MemoryImage(imageBytes);
+                  } else if (hasNetwork) {
+                    bgImage = NetworkImage(url);
+                  }
+
                   return Column(
                     children: [
                       Stack(
@@ -51,10 +61,11 @@ class ProfileScreen extends StatelessWidget {
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: AppColors.primary,
-                            backgroundImage: imageBytes != null
-                                ? MemoryImage(imageBytes)
+                            backgroundImage: bgImage,
+                            onBackgroundImageError: bgImage != null
+                                ? (_, _) {}
                                 : null,
-                            child: imageBytes == null
+                            child: bgImage == null
                                 ? Text(
                                     profileCtrl.initials,
                                     style: const TextStyle(
@@ -140,17 +151,17 @@ class ProfileScreen extends StatelessWidget {
                 }),
               ),
               const SizedBox(height: 20),
-              _StatsCard(
+              Obx(() => _StatsCard(
                 isDark: isDark,
                 cardColor: cardColor,
                 borderColor: borderColor,
-                presentCount: profileCtrl.presentCount,
-                absentCount: profileCtrl.absentCount,
-                lateCount: profileCtrl.lateCount,
-                mcCount: profileCtrl.mcCount,
-              ),
+                presentCount: profileCtrl.presentCount.value,
+                absentCount: profileCtrl.absentCount.value,
+                lateCount: profileCtrl.lateCount.value,
+                mcCount: profileCtrl.mcCount.value,
+              )),
               const SizedBox(height: 16),
-              _SectionCard(
+              Obx(() => _SectionCard(
                 title: 'personal_info'.tr,
                 isDark: isDark,
                 cardColor: cardColor,
@@ -189,9 +200,9 @@ class ProfileScreen extends StatelessWidget {
                     isDark: isDark,
                   ),
                 ],
-              ),
+              )),
               const SizedBox(height: 16),
-              _SectionCard(
+              Obx(() => _SectionCard(
                 title: 'employment',
                 isDark: isDark,
                 cardColor: cardColor,
@@ -232,38 +243,9 @@ class ProfileScreen extends StatelessWidget {
                     isDark: isDark,
                   ),
                 ],
-              ),
+              )),
               const SizedBox(height: 16),
-              _SectionCard(
-                title: 'emergency contact',
-                isDark: isDark,
-                cardColor: cardColor,
-                borderColor: borderColor,
-                children: [
-                  _InfoRow(
-                    icon: Icons.person_outline_rounded,
-                    title: 'Name',
-                    value: profileCtrl.emergencyContactName,
-                    isDark: isDark,
-                  ),
-                  _SectionDivider(isDark: isDark),
-                  _InfoRow(
-                    icon: Icons.family_restroom_outlined,
-                    title: 'Relationship',
-                    value: profileCtrl.emergencyContactRelation,
-                    isDark: isDark,
-                  ),
-                  _SectionDivider(isDark: isDark),
-                  _InfoRow(
-                    icon: Icons.call_outlined,
-                    title: 'Phone',
-                    value: profileCtrl.emergencyContactPhone,
-                    isDark: isDark,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _SectionCard(
+              Obx(() => _SectionCard(
                 title: 'payroll & bank',
                 isDark: isDark,
                 cardColor: cardColor,
@@ -290,7 +272,36 @@ class ProfileScreen extends StatelessWidget {
                     isDark: isDark,
                   ),
                 ],
-              ),
+              )),
+              const SizedBox(height: 16),
+              Obx(() => _SectionCard(
+                title: 'emergency contact',
+                isDark: isDark,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                children: [
+                  _InfoRow(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Name',
+                    value: profileCtrl.emergencyContactName,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.family_restroom_outlined,
+                    title: 'Relationship',
+                    value: profileCtrl.emergencyContactRelation,
+                    isDark: isDark,
+                  ),
+                  _SectionDivider(isDark: isDark),
+                  _InfoRow(
+                    icon: Icons.call_outlined,
+                    title: 'Phone',
+                    value: profileCtrl.emergencyContactPhone,
+                    isDark: isDark,
+                  ),
+                ],
+              )),
               const SizedBox(height: 16),
               _SectionCard(
                 title: 'preferences'.tr,
@@ -351,7 +362,7 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              _SectionCard(
+              Obx(() => _SectionCard(
                 title: 'session & security',
                 isDark: isDark,
                 cardColor: cardColor,
@@ -397,7 +408,7 @@ class ProfileScreen extends StatelessWidget {
                     trailing: Icon(Icons.chevron_right_rounded, color: muted),
                   ),
                 ],
-              ),
+              )),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: profileCtrl.confirmLogout,

@@ -5,14 +5,19 @@ class AttendanceRecordModel {
   final DateTime date;
   final DateTime? checkInAt;
   final DateTime? checkOutAt;
-  final String checkInLocation;
-  final String checkOutLocation;
-  final double distanceM;
+  final String? checkInLocation;
+  final String? checkOutLocation;
+  final double checkInDistanceM;
+  final double? checkOutDistanceM;
+  final double? checkInLatitude;
+  final double? checkInLongitude;
+  final double? checkOutLatitude;
+  final double? checkOutLongitude;
   final AttendanceRecordStatus status;
   final bool isLate;
   final bool isEarlyCheckout;
   final String workingHoursLabel;
-  final String remarks;
+  final String? remarks;
   final String auditStatus;
 
   const AttendanceRecordModel({
@@ -20,14 +25,19 @@ class AttendanceRecordModel {
     required this.date,
     required this.checkInAt,
     required this.checkOutAt,
-    required this.checkInLocation,
-    required this.checkOutLocation,
-    required this.distanceM,
+    this.checkInLocation,
+    this.checkOutLocation,
+    this.checkInDistanceM = 0,
+    this.checkOutDistanceM,
+    this.checkInLatitude,
+    this.checkInLongitude,
+    this.checkOutLatitude,
+    this.checkOutLongitude,
     required this.status,
     required this.isLate,
     required this.isEarlyCheckout,
     required this.workingHoursLabel,
-    required this.remarks,
+    this.remarks,
     required this.auditStatus,
   });
 
@@ -35,11 +45,16 @@ class AttendanceRecordModel {
     return AttendanceRecordModel(
       id: json['id'].toString(),
       date: DateTime.parse(json['date'] as String),
-      checkInAt: DateTime.tryParse(json['check_in_at'] as String? ?? ''),
-      checkOutAt: DateTime.tryParse(json['check_out_at'] as String? ?? ''),
-      checkInLocation: json['check_in_location'] as String? ?? 'Not recorded',
-      checkOutLocation: json['check_out_location'] as String? ?? 'Not recorded',
-      distanceM: (json['distance_m'] as num? ?? 0).toDouble(),
+      checkInAt: DateTime.tryParse(json['check_in_at'] as String? ?? '')?.toLocal(),
+      checkOutAt: DateTime.tryParse(json['check_out_at'] as String? ?? '')?.toLocal(),
+      checkInLocation: json['check_in_location'] as String?,
+      checkOutLocation: json['check_out_location'] as String?,
+      checkInDistanceM: (json['check_in_distance_m'] as num? ?? 0).toDouble(),
+      checkOutDistanceM: (json['check_out_distance_m'] as num?)?.toDouble(),
+      checkInLatitude: (json['check_in_latitude'] as num?)?.toDouble(),
+      checkInLongitude: (json['check_in_longitude'] as num?)?.toDouble(),
+      checkOutLatitude: (json['check_out_latitude'] as num?)?.toDouble(),
+      checkOutLongitude: (json['check_out_longitude'] as num?)?.toDouble(),
       status: AttendanceRecordStatus.values.firstWhere(
         (item) => item.name == json['status'],
         orElse: () => AttendanceRecordStatus.present,
@@ -47,25 +62,28 @@ class AttendanceRecordModel {
       isLate: json['is_late'] as bool? ?? false,
       isEarlyCheckout: json['is_early_checkout'] as bool? ?? false,
       workingHoursLabel: json['working_hours_label'] as String? ?? '0h 00m',
-      remarks: json['remarks'] as String? ?? '',
+      remarks: json['remarks'] as String?,
       auditStatus: json['audit_status'] as String? ?? 'Verified',
     );
   }
 
-  String get statusLabel {
+  // Returns the i18n key so callers can do labelFor(status).tr
+  static String labelFor(AttendanceRecordStatus status) {
     switch (status) {
       case AttendanceRecordStatus.present:
-        return 'Present';
+        return 'present';
       case AttendanceRecordStatus.late:
-        return 'Late';
+        return 'late';
       case AttendanceRecordStatus.absent:
-        return 'Absent';
+        return 'absent';
       case AttendanceRecordStatus.leave:
-        return 'On leave';
+        return 'on_leave';
       case AttendanceRecordStatus.issue:
-        return 'Needs correction';
+        return 'needs_correction';
     }
   }
+
+  String get statusLabel => labelFor(status);
 
   int get statusColorValue {
     switch (status) {

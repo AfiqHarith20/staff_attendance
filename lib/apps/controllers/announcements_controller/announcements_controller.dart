@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/apps/models/announcement_model.dart';
 
 class AnnouncementsController extends GetxController {
   final announcements = <AnnouncementModel>[].obs;
   final isLoading = false.obs;
+  final errorMessage = ''.obs;
   final selectedCategory = 'All'.obs;
 
   List<String> get categories {
@@ -37,13 +40,29 @@ class AnnouncementsController extends GetxController {
   Future<void> fetchAnnouncements() async {
     try {
       isLoading(true);
-      final response = await ApiClient.instance.get('/announcements');
+      errorMessage('');
+      final response = await ApiClient.instance.get(ApiList.announcements);
       final list = (response.data['data'] as List? ?? const [])
           .map((item) => AnnouncementModel.fromJson(item as Map<String, dynamic>))
           .toList();
       announcements.assignAll(list);
+    } catch (e) {
+      debugPrint('ANNOUNCEMENTS error: $e');
+      errorMessage('could_not_load_announcements'.tr);
     } finally {
       isLoading(false);
+    }
+  }
+
+  Future<void> markAsRead(String id) async {
+    final idx = announcements.indexWhere((a) => a.id == id);
+    if (idx != -1 && announcements[idx].isUnread) {
+      announcements[idx] = announcements[idx].copyWith(isUnread: false);
+    }
+    try {
+      await ApiClient.instance.post(ApiList.announcementRead(id));
+    } catch (e) {
+      debugPrint('ANNOUNCEMENTS markAsRead error: $e');
     }
   }
 

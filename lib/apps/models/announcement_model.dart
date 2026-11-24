@@ -27,10 +27,21 @@ class AnnouncementModel {
       summary: json['summary'] as String? ?? '',
       body: json['body'] as String? ?? '',
       publishedAt:
-          DateTime.tryParse(json['published_at'] as String? ?? '') ??
-          DateTime.now(),
+          (DateTime.tryParse(json['published_at'] as String? ?? '') ??
+          DateTime.now()).toLocal(),
       isPinned: json['is_pinned'] as bool? ?? false,
       isUnread: json['is_unread'] as bool? ?? false,
     );
   }
+
+  AnnouncementModel copyWith({bool? isUnread}) => AnnouncementModel(
+        id: id,
+        title: title,
+        category: category,
+        summary: summary,
+        body: body,
+        publishedAt: publishedAt,
+        isPinned: isPinned,
+        isUnread: isUnread ?? this.isUnread,
+      );
 }

@@ -1,12 +1,18 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart' hide Response;
+import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:get_storage/get_storage.dart';
+import 'package:staff_attendance/api/api_client.dart';
 import 'package:staff_attendance/apps/controllers/locale_controller/locale_controller.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/apps/routes/routes.dart';
+import 'package:staff_attendance/core/services/device_service.dart';
 import 'package:staff_attendance/core/services/storage_service.dart';
 import 'package:staff_attendance/core/services/token_controller.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
@@ -25,26 +31,37 @@ class ProfileController extends GetxController {
   final obscureNewPassword = true.obs;
   final obscureConfirmPassword = true.obs;
   final profileImageBase64 = RxnString();
+  // Path of a newly picked avatar file, cleared after upload.
+  // May be null on Android SAF (content:// URI) — use _pendingAvatarBytes fallback.
+  final _pendingAvatarPath = RxnString();
+  final _pendingAvatarName = RxnString();
+  // Network URL from the server (populated on login and after PATCH /user).
+  final avatarUrl = RxnString();
 
-  final _fullName = 'Ahmad Nizam'.obs;
-  final _email = 'ahmad@clokk.app'.obs;
-  final _phone = '+60 12-345 6789'.obs;
-  final _employeeId = 'EMP-0042'.obs;
-  final _office = 'Operations · Clokk HQ'.obs;
-  final _department = 'Operations'.obs;
-  final _managerName = 'Nur Aisyah Rahman'.obs;
-  final _jobTitle = 'Operations Executive'.obs;
-  final _employmentType = 'Full-time'.obs;
-  final _joinedOn = '12 Jan 2024'.obs;
-  final _emergencyContactName = 'Hafiz Nizam'.obs;
-  final _emergencyContactPhone = '+60 19-888 1122'.obs;
-  final _emergencyContactRelation = 'Brother'.obs;
-  final _bankName = 'Maybank'.obs;
-  final _bankAccountMasked = '**** 4421'.obs;
-  final _payrollCycle = 'Monthly · 24th'.obs;
-  final _lastLogin = '24 Jul 2026, 8:14 AM'.obs;
-  final _activeDevice = 'iPhone 15 Pro · iOS'.obs;
+  final _fullName = '—'.obs;
+  final _email = '—'.obs;
+  final _phone = '—'.obs;
+  final _employeeId = '—'.obs;
+  final _office = '—'.obs;
+  final _department = '—'.obs;
+  final _managerName = '—'.obs;
+  final _jobTitle = '—'.obs;
+  final _employmentType = '—'.obs;
+  final _joinedOn = '—'.obs;
+  final _emergencyContactName = '—'.obs;
+  final _emergencyContactPhone = '—'.obs;
+  final _emergencyContactRelation = '—'.obs;
+  final _bankName = '—'.obs;
+  final _bankAccountMasked = '—'.obs;
+  final _payrollCycle = '—'.obs;
+  final _lastLogin = '—'.obs;
+  final _activeDevice = '—'.obs;
   final biometricLoginEnabled = false.obs;
+
+  final presentCount = 0.obs;
+  final absentCount = 0.obs;
+  final lateCount = 0.obs;
+  final mcCount = 0.obs;
 
   final fullNameController = TextEditingController();
   final emailController = TextEditingController();
@@ -55,11 +72,6 @@ class ProfileController extends GetxController {
   final currentPasswordController = TextEditingController();
   final newPasswordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
-
-  int get presentCount => 22;
-  int get absentCount => 2;
-  int get lateCount => 3;
-  int get mcCount => 1;
 
   String get fullName => _fullName.value;
   String get email => _email.value;
@@ -91,8 +103,8 @@ class ProfileController extends GetxController {
   }
 
   String get roleLabel {
-    final role = (_box.read<String>('user_role') ?? 'staff').toLowerCase();
-    switch (role) {
+    final raw = _box.read<String>('user_role') ?? '';
+    switch (raw.toLowerCase()) {
       case 'admin':
         return 'Admin';
       case 'super_admin':
@@ -103,8 +115,10 @@ class ProfileController extends GetxController {
         return 'HR';
       case 'manager':
         return 'Manager';
-      default:
+      case 'staff':
         return 'staff'.tr;
+      default:
+        return raw.isNotEmpty ? raw : 'staff'.tr;
     }
   }
 
@@ -133,19 +147,23 @@ class ProfileController extends GetxController {
     super.onInit();
     notificationsEnabled.value = _box.read<bool>(_notificationsKey) ?? true;
     selectedLanguageCode.value = Get.locale?.languageCode ?? 'en';
-    _fullName.value = _box.read<String>('user_name') ?? 'Ahmad Nizam';
-    _email.value = _box.read<String>('user_email') ?? 'ahmad@clokk.app';
-    _phone.value = _box.read<String>('user_phone') ?? '+60 12-345 6789';
-    _employeeId.value = _box.read<String>('employee_id') ?? 'EMP-0042';
-    _office.value = _box.read<String>('office_name') ?? 'Operations · Clokk HQ';
-    _department.value = _box.read<String>('department_name') ?? 'Operations';
-    _managerName.value =
-        _box.read<String>('manager_name') ?? 'Nur Aisyah Rahman';
-    _jobTitle.value = _box.read<String>('job_title') ?? 'Operations Executive';
+    _fullName.value = _box.read<String>('user_name') ?? '—';
+    _email.value = _box.read<String>('user_email') ?? '—';
+    _phone.value = _box.read<String>('user_phone') ?? '—';
+    _employeeId.value = _box.read<String>('employee_no') ??
+        _box.read<String>('employee_id') ?? '—';
+    _office.value = _box.read<String>('office_name') ?? '—';
+    _department.value = _box.read<String>('department_name') ?? '—';
+    _managerName.value = _box.read<String>('manager_name') ?? '—';
+    _jobTitle.value = _box.read<String>('job_title') ?? '—';
+    _joinedOn.value = _box.read<String>('joined_on') ?? '—';
     biometricLoginEnabled.value =
         _box.read<bool>('biometric_login_enabled') ?? false;
     profileImageBase64.value = _box.read<String>(_profileImageKey);
+    final stored = _box.read<String>('avatar_url');
+    avatarUrl.value = stored != null ? ApiList.normalizeUrl(stored) : null;
     _seedProfileControllers();
+    _fetchProfile();
   }
 
   @override
@@ -400,6 +418,16 @@ class ProfileController extends GetxController {
                     Center(
                       child: Obx(() {
                         final imageBytes = profileImageBytes;
+                        final url = avatarUrl.value;
+                        final hasNetwork = url != null && url.isNotEmpty;
+
+                        ImageProvider? bgImage;
+                        if (imageBytes != null) {
+                          bgImage = MemoryImage(imageBytes);
+                        } else if (hasNetwork) {
+                          bgImage = NetworkImage(url);
+                        }
+
                         return Column(
                           children: [
                             Stack(
@@ -408,10 +436,11 @@ class ProfileController extends GetxController {
                                 CircleAvatar(
                                   radius: 40,
                                   backgroundColor: const Color(0xFF185FA5),
-                                  backgroundImage: imageBytes != null
-                                      ? MemoryImage(imageBytes)
+                                  backgroundImage: bgImage,
+                                  onBackgroundImageError: bgImage != null
+                                      ? (_, _) {}
                                       : null,
-                                  child: imageBytes == null
+                                  child: bgImage == null
                                       ? Text(
                                           initials,
                                           style: const TextStyle(
@@ -479,6 +508,7 @@ class ProfileController extends GetxController {
                       keyboardType: TextInputType.emailAddress,
                       fillColor: fieldFill,
                       borderColor: border,
+                      readOnly: true,
                     ),
                     const SizedBox(height: 12),
                     _ProfileEditField(
@@ -566,71 +596,201 @@ class ProfileController extends GetxController {
   }
 
   Future<void> pickProfileImage() async {
-    final result = await FilePicker.platform.pickFiles(
+    final status = await Permission.photos.request();
+    if (status.isPermanentlyDenied) {
+      openAppSettings();
+      return;
+    }
+
+    final file = await FilePicker.pickFile(
       type: FileType.image,
-      withData: true,
     );
 
-    if (result == null || result.files.isEmpty) return;
+    if (file == null) return;
 
-    final bytes = result.files.single.bytes;
-    if (bytes == null || bytes.isEmpty) {
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) {
       AppToast.failed('profile_details'.tr, 'image_pick_failed'.tr);
       return;
     }
 
+    // Keep bytes for immediate display.
     profileImageBase64.value = base64Encode(bytes);
+    // On Android SAF, file.path may be null (content:// URI).
+    // Store the filename so MultipartFile.fromBytes can set it correctly.
+    _pendingAvatarPath.value = file.path;
+    _pendingAvatarName.value = file.name;
   }
 
   void removeProfileImage() {
     profileImageBase64.value = null;
+    _pendingAvatarPath.value = null;
+    _pendingAvatarName.value = null;
+  }
+
+  // ── Fetch profile from GET /user ───────────────────────────────────────────
+  Future<void> _fetchProfile() async {
+    try {
+      final res = await ApiClient.instance.get(ApiList.currentUser);
+      final d = res.data['data'] as Map<String, dynamic>;
+
+      // ── Core identity ──────────────────────────────────────────────────────
+      _fullName.value = d['name'] as String? ?? _fullName.value;
+      _email.value = d['email'] as String? ?? _email.value;
+      _phone.value = d['phone'] as String? ?? _phone.value;
+      _employeeId.value = d['employee_no'] as String? ?? _employeeId.value;
+      _jobTitle.value = d['job_title'] as String? ?? _jobTitle.value;
+      _department.value = d['department'] as String? ?? _department.value;
+      if (d['joined_on'] != null) {
+        final raw = d['joined_on'] as String;
+        final dt = DateTime.tryParse(raw)?.toLocal();
+        _joinedOn.value =
+            dt != null ? DateFormat('d MMM yyyy').format(dt) : raw;
+      }
+
+      // ── New fields ─────────────────────────────────────────────────────────
+      _office.value = d['office_name'] as String? ?? _office.value;
+      _managerName.value = d['manager_name'] as String? ?? _managerName.value;
+      _employmentType.value =
+          d['employment_type'] as String? ?? _employmentType.value;
+      _emergencyContactName.value =
+          d['emergency_contact_name'] as String? ?? _emergencyContactName.value;
+      _emergencyContactPhone.value =
+          d['emergency_contact_phone'] as String? ?? _emergencyContactPhone.value;
+      _emergencyContactRelation.value =
+          d['emergency_contact_relation'] as String? ?? _emergencyContactRelation.value;
+      _bankName.value = d['bank_name'] as String? ?? _bankName.value;
+      _bankAccountMasked.value =
+          d['bank_account_masked'] as String? ?? _bankAccountMasked.value;
+      _payrollCycle.value =
+          d['payroll_cycle'] as String? ?? _payrollCycle.value;
+      _activeDevice.value =
+          d['active_device'] as String? ?? _activeDevice.value;
+
+      // ── last_login_at: ISO 8601 → "24 Jul 2026, 8:14 AM" ─────────────────
+      final rawLogin = d['last_login_at'] as String?;
+      if (rawLogin != null) {
+        final dt = DateTime.tryParse(rawLogin)?.toLocal();
+        if (dt != null) {
+          _lastLogin.value = DateFormat('d MMM yyyy, h:mm a').format(dt);
+        }
+      }
+
+      // ── Attendance stats ───────────────────────────────────────────────────
+      final stats = d['stats'] as Map<String, dynamic>?;
+      if (stats != null) {
+        presentCount.value = (stats['present'] as num?)?.toInt() ?? 0;
+        absentCount.value = (stats['absent'] as num?)?.toInt() ?? 0;
+        lateCount.value = (stats['late'] as num?)?.toInt() ?? 0;
+        mcCount.value = (stats['mc'] as num?)?.toInt() ?? 0;
+      }
+
+      // ── Avatar ─────────────────────────────────────────────────────────────
+      if (d['avatar_url'] != null) {
+        final url = ApiList.normalizeUrl(d['avatar_url'] as String);
+        avatarUrl.value = url;
+        _box.write('avatar_url', url);
+      }
+
+      // Persist core fields so next cold start shows fresh values.
+      await _box.write('user_name', _fullName.value);
+      await _box.write('user_phone', _phone.value);
+      await _box.write('employee_no', _employeeId.value);
+      await _box.write('job_title', _jobTitle.value);
+      await _box.write('department_name', _department.value);
+      await _box.write('office_name', _office.value);
+      await _box.write('manager_name', _managerName.value);
+
+      _seedProfileControllers();
+    } catch (_) {
+      // Non-blocking — cached values remain.
+    }
   }
 
   Future<void> saveProfileDetails() async {
     final name = fullNameController.text.trim();
-    final mail = emailController.text.trim();
     final phoneNumber = phoneController.text.trim();
-    final id = employeeIdController.text.trim();
-    final officeName = officeController.text.trim();
 
-    if ([name, mail, phoneNumber, id, officeName].any((e) => e.isEmpty)) {
+    if (name.isEmpty) {
       AppToast.failed('profile_details'.tr, 'fill_all_fields'.tr);
       return;
     }
 
-    if (!mail.contains('@')) {
-      AppToast.failed('profile_details'.tr, 'invalid_email'.tr);
-      return;
-    }
-
     isSavingProfile.value = true;
-    await Future.delayed(const Duration(milliseconds: 700));
+    try {
+      dynamic payload;
+      Options? options;
+      final avatarPath = _pendingAvatarPath.value;
+      final avatarBytes = profileImageBytes; // decoded from base64
+      final avatarName = _pendingAvatarName.value ?? 'avatar.jpg';
 
-    _fullName.value = name;
-    _email.value = mail;
-    _phone.value = phoneNumber;
-    _employeeId.value = id;
-    _office.value = officeName;
+      final hasNewAvatar = avatarPath != null || avatarBytes != null;
+      if (hasNewAvatar) {
+        // Build multipart file: prefer file path (direct disk read by Dio);
+        // fall back to in-memory bytes for Android SAF where path is null (BUG-03).
+        final MultipartFile avatarFile;
+        if (avatarPath != null) {
+          avatarFile = await MultipartFile.fromFile(avatarPath, filename: avatarName);
+        } else {
+          avatarFile = MultipartFile.fromBytes(avatarBytes!, filename: avatarName);
+        }
+        payload = FormData.fromMap({
+          'name': name,
+          if (phoneNumber.isNotEmpty) 'phone': phoneNumber,
+          'avatar': avatarFile,
+        });
+        options = Options(headers: {'Content-Type': 'multipart/form-data'});
+      } else {
+        payload = {
+          'name': name,
+          if (phoneNumber.isNotEmpty) 'phone': phoneNumber,
+        };
+      }
 
-    await _box.write('user_name', name);
-    await _box.write('user_email', mail);
-    await _box.write('user_phone', phoneNumber);
-    await _box.write('employee_id', id);
-    await _box.write('office_name', officeName);
+      final res = await ApiClient.instance.patch(
+        ApiList.currentUser,
+        data: payload,
+        options: options,
+      );
 
-    if (profileImageBase64.value == null || profileImageBase64.value!.isEmpty) {
-      await _box.remove(_profileImageKey);
-    } else {
-      await _box.write(_profileImageKey, profileImageBase64.value);
+      final d = res.data['data'] as Map<String, dynamic>;
+      _fullName.value = d['name'] as String? ?? name;
+      _phone.value = d['phone'] as String? ?? phoneNumber;
+      if (d['avatar_url'] != null) {
+        final url = ApiList.normalizeUrl(d['avatar_url'] as String);
+        avatarUrl.value = url;
+        await _box.write('avatar_url', url);
+      }
+      _pendingAvatarPath.value = null;
+      _pendingAvatarName.value = null;
+
+      await _box.write('user_name', _fullName.value);
+      await _box.write('user_phone', _phone.value);
+
+      // Also persist local-only fields.
+      final id = employeeIdController.text.trim();
+      final officeName = officeController.text.trim();
+      if (id.isNotEmpty) await _box.write('employee_id', id);
+      if (officeName.isNotEmpty) await _box.write('office_name', officeName);
+      _employeeId.value = id.isNotEmpty ? id : _employeeId.value;
+      _office.value = officeName.isNotEmpty ? officeName : _office.value;
+
+      if (profileImageBase64.value != null) {
+        await _box.write(_profileImageKey, profileImageBase64.value);
+      } else {
+        await _box.remove(_profileImageKey);
+      }
+
+      if (Get.isBottomSheetOpen ?? false) Get.back();
+      AppToast.success('profile_details'.tr, 'profile_updated'.tr);
+    } on DioException catch (e) {
+      AppToast.failed(
+        'profile_details'.tr,
+        ApiClient.extractError(e, fallback: 'submission_failed'.tr),
+      );
+    } finally {
+      isSavingProfile.value = false;
     }
-
-    isSavingProfile.value = false;
-
-    if (Get.isBottomSheetOpen ?? false) {
-      Get.back();
-    }
-
-    AppToast.success('profile_details'.tr, 'profile_updated'.tr);
   }
 
   void openChangePasswordSheet() {
@@ -857,7 +1017,7 @@ class ProfileController extends GetxController {
       return;
     }
 
-    if (next.length < 6) {
+    if (next.length < 8) {
       AppToast.failed('change_password'.tr, 'password_too_short'.tr);
       return;
     }
@@ -868,14 +1028,25 @@ class ProfileController extends GetxController {
     }
 
     isUpdatingPassword.value = true;
-    await Future.delayed(const Duration(milliseconds: 900));
-    isUpdatingPassword.value = false;
-
-    if (Get.isBottomSheetOpen ?? false) {
-      Get.back();
+    try {
+      await ApiClient.instance.post(
+        ApiList.changePassword,
+        data: {
+          'current_password': current,
+          'password': next,
+          'password_confirmation': confirm,
+        },
+      );
+      if (Get.isBottomSheetOpen ?? false) Get.back();
+      AppToast.success('change_password'.tr, 'password_updated'.tr);
+    } on DioException catch (e) {
+      AppToast.failed(
+        'change_password'.tr,
+        ApiClient.extractError(e, fallback: 'submission_failed'.tr),
+      );
+    } finally {
+      isUpdatingPassword.value = false;
     }
-
-    AppToast.success('change_password'.tr, 'password_updated'.tr);
   }
 
   void confirmLogout() {
@@ -902,8 +1073,40 @@ class ProfileController extends GetxController {
     );
 
     try {
+      // Deregister push token BEFORE revoking auth (needs a valid Bearer token).
+      await DeviceService.unregister();
+
+      // Revoke the Sanctum token server-side (fire-and-forget: continue even
+      // if the server is unreachable so the user is never stuck logged in).
+      try {
+        await ApiClient.instance.post(ApiList.logout);
+      } catch (_) {}
+
       await StorageService.to.clearAuthToken();
-      await _box.remove('user_role');
+
+      // Clear all user-specific profile data so the next user on this device
+      // starts with a clean slate. Device-level prefs (remember_me,
+      // saved_email, saved_password, mock_mode) are intentionally kept.
+      for (final key in const [
+        'user_role',
+        'is_admin',
+        'user_permissions',
+        'user_name',
+        'user_email',
+        'job_title',
+        'department_name',
+        'employee_no',
+        'user_phone',
+        'joined_on',
+        'avatar_url',
+        'profile_image_base64',
+        'office_name',
+        'manager_name',
+        'profile_notifications_enabled',
+        'biometric_login_enabled',
+      ]) {
+        await _box.remove(key);
+      }
 
       if (Get.isRegistered<TokenController>()) {
         final tokenController = Get.find<TokenController>();
@@ -928,6 +1131,7 @@ class _ProfileEditField extends StatelessWidget {
   final Color fillColor;
   final Color borderColor;
   final TextInputType? keyboardType;
+  final bool readOnly;
 
   const _ProfileEditField({
     required this.controller,
@@ -936,6 +1140,7 @@ class _ProfileEditField extends StatelessWidget {
     required this.fillColor,
     required this.borderColor,
     this.keyboardType,
+    this.readOnly = false,
   });
 
   @override
@@ -943,6 +1148,7 @@ class _ProfileEditField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      readOnly: readOnly,
       decoration: InputDecoration(
         labelText: label,
         filled: true,

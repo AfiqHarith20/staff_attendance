@@ -34,6 +34,39 @@ class ApprovalInboxScreen extends GetView<ApprovalInboxController> {
                 if (controller.isLoading.value) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                final error = controller.errorMessage.value;
+                if (error != null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.wifi_off_rounded,
+                              size: 40,
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.color),
+                          const SizedBox(height: 12),
+                          Text(error,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall),
+                          const SizedBox(height: 20),
+                          TextButton.icon(
+                            onPressed: controller.fetchApprovals,
+                            icon: const Icon(Icons.refresh_rounded,
+                                color: Color(0xFF185FA5), size: 18),
+                            label: const Text('Retry',
+                                style: TextStyle(
+                                    color: Color(0xFF185FA5),
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
                 final items = controller.filtered;
                 if (items.isEmpty) {
                   return const Center(child: Text('No pending approvals'));

@@ -18,7 +18,7 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
       body: SafeArea(
         child: Column(
           children: [
-            appBar(isDark: isDark, title: 'Apply Leave'),
+            appBar(isDark: isDark, title: 'apply_leave'.tr),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
@@ -38,7 +38,7 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            sectionLabel(label: 'Leave type', isDark: isDark),
+                            sectionLabel(label: 'leave_type'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             _LeaveTypeSelector(isDark: isDark),
                           ],
@@ -51,13 +51,13 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            sectionLabel(label: 'Date range', isDark: isDark),
+                            sectionLabel(label: 'date_range'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(
                                   child: datePickerTile(
-                                    label: 'Start date',
+                                    label: 'start_date'.tr,
                                     isDark: isDark,
                                     dateObs: controller.startDate,
                                     onTap: () =>
@@ -68,7 +68,7 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: datePickerTile(
-                                    label: 'End date',
+                                    label: 'end_date'.tr,
                                     isDark: isDark,
                                     dateObs: controller.endDate,
                                     onTap: () =>
@@ -120,8 +120,14 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
                                     Expanded(
                                       child: Text(
                                         enough
-                                            ? '$days day${days > 1 ? 's' : ''} selected · ${controller.remainingForType - days} day(s) left after approval'
-                                            : '$days days requested but only ${controller.remainingForType} available',
+                                            ? 'days_selected_balance'.trParams({
+                                                'days': days.toString(),
+                                                'left': (controller.remainingForType - days).toString(),
+                                              })
+                                            : 'days_requested_insufficient'.trParams({
+                                                'days': days.toString(),
+                                                'available': controller.remainingForType.toString(),
+                                              }),
                                         style: TextStyle(
                                           color: enough
                                               ? const Color(0xFF16A34A)
@@ -145,13 +151,12 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            sectionLabel(label: 'Reason', isDark: isDark),
+                            sectionLabel(label: 'reason'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             reasonField(
                               ctrl: controller.reasonCtrl,
                               isDark: isDark,
-                              hint:
-                                  'Briefly describe why you are applying for leave and any handover notes.',
+                              hint: 'leave_reason_hint'.tr,
                             ),
                           ],
                         ),
@@ -160,10 +165,10 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
 
                       noteCard(
                         isDark: isDark,
-                        lines: const [
-                          'Leave applications require manager approval.',
-                          'Medical leave requires an MC from a certified clinic.',
-                          'Emergency leave must be applied within 3 working days.',
+                        lines: [
+                          'leave_approval_note'.tr,
+                          'medical_leave_note'.tr,
+                          'emergency_leave_note'.tr,
                         ],
                       ),
                     ],
@@ -178,7 +183,7 @@ class ApplyLeaveScreen extends GetView<ApplyLeaveController> {
       // ── Submit button ──
       bottomNavigationBar: submitBar(
         isDark: isDark,
-        label: 'Submit application',
+        label: 'submit_application'.tr,
         color: const Color(0xFF185FA5),
         onTap: controller.submit,
         isSubmitting: controller.isSubmitting,
@@ -205,26 +210,26 @@ class _LeaveHero extends StatelessWidget {
               : const [Color(0xFF185FA5), Color(0xFF4DA3E8)],
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.event_available_rounded, color: Colors.white, size: 26),
-          SizedBox(width: 12),
+          const Icon(Icons.event_available_rounded, color: Colors.white, size: 26),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Plan your leave clearly',
-                  style: TextStyle(
+                  'plan_leave_title'.tr,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Choose leave type, set dates, and submit with enough detail for fast approval.',
-                  style: TextStyle(color: Color(0xFFDCEEFF), fontSize: 12),
+                  'apply_leave_subtitle'.tr,
+                  style: const TextStyle(color: Color(0xFFDCEEFF), fontSize: 12),
                 ),
               ],
             ),
@@ -258,7 +263,7 @@ class _BalanceCard extends GetView<ApplyLeaveController> {
         child: Row(
           children: [
             _BalancePill(
-              label: 'Annual',
+              label: 'annual_leave_short'.tr,
               left: b.annualLeft,
               total: b.annualTotal,
               color: const Color(0xFF185FA5),
@@ -266,7 +271,7 @@ class _BalanceCard extends GetView<ApplyLeaveController> {
             ),
             _vDivider(isDark),
             _BalancePill(
-              label: 'Medical',
+              label: 'medical'.tr,
               left: b.medicalLeft,
               total: b.medicalTotal,
               color: const Color(0xFFDC2626),
@@ -274,7 +279,7 @@ class _BalanceCard extends GetView<ApplyLeaveController> {
             ),
             _vDivider(isDark),
             _BalancePill(
-              label: 'Emergency',
+              label: 'emergency'.tr,
               left: b.emergencyLeft,
               total: b.emergencyTotal,
               color: const Color(0xFFF59E0B),
@@ -343,11 +348,11 @@ class _LeaveTypeSelector extends GetView<ApplyLeaveController> {
   const _LeaveTypeSelector({required this.isDark});
 
   static const _types = [
-    (LeaveType.annual, 'Annual', 0xFF185FA5, Icons.beach_access_rounded),
-    (LeaveType.medical, 'Medical', 0xFFDC2626, Icons.local_hospital_rounded),
-    (LeaveType.emergency, 'Emergency', 0xFFF59E0B, Icons.warning_amber_rounded),
-    (LeaveType.unpaid, 'Unpaid', 0xFF7F77DD, Icons.money_off_rounded),
-    (LeaveType.other, 'Other', 0xFF64748B, Icons.more_horiz_rounded),
+    (LeaveType.annual, 'annual', 0xFF185FA5, Icons.beach_access_rounded),
+    (LeaveType.medical, 'medical', 0xFFDC2626, Icons.local_hospital_rounded),
+    (LeaveType.emergency, 'emergency', 0xFFF59E0B, Icons.warning_amber_rounded),
+    (LeaveType.unpaid, 'unpaid', 0xFF7F77DD, Icons.money_off_rounded),
+    (LeaveType.other, 'other_leave', 0xFF64748B, Icons.more_horiz_rounded),
   ];
 
   @override
@@ -389,7 +394,7 @@ class _LeaveTypeSelector extends GetView<ApplyLeaveController> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    t.$2,
+                    t.$2.tr,
                     style: TextStyle(
                       color: isActive
                           ? Colors.white

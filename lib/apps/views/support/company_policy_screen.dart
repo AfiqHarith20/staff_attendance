@@ -93,7 +93,7 @@ class CompanyPolicyScreen extends StatelessWidget {
             AppAdaptiveGrid(
               itemCount: _policyCards.length,
               minChildWidth: 170,
-              childAspectRatio: 1.35,
+              childAspectRatio: 1.05,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
               itemBuilder: (_, index) {
@@ -122,6 +122,8 @@ class CompanyPolicyScreen extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         item.$2,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 12,

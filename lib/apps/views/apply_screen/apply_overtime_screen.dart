@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:staff_attendance/apps/controllers/apply_controller/apply_overtime_controller.dart';
+import 'package:staff_attendance/apps/models/overtime_model.dart';
 import 'package:staff_attendance/widgets/form_widget.dart';
 
 class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
@@ -16,7 +17,7 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
       body: SafeArea(
         child: Column(
           children: [
-            appBar(isDark: isDark, title: 'Apply Overtime'),
+            appBar(isDark: isDark, title: 'apply_ot'.tr),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
@@ -27,16 +28,12 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
                     children: [
                       _OvertimeHero(isDark: isDark),
                       const SizedBox(height: 16),
-                      // ── OT type selector ──
                       formSectionCard(
                         isDark: isDark,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            sectionLabel(
-                              label: 'Overtime type',
-                              isDark: isDark,
-                            ),
+                            sectionLabel(label: 'overtime_type'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             _OtTypeSelector(isDark: isDark),
                             const SizedBox(height: 14),
@@ -51,33 +48,30 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            sectionLabel(label: 'OT date', isDark: isDark),
+                            sectionLabel(label: 'ot_date'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             datePickerTile(
-                              label: 'Select date',
+                              label: 'select_date'.tr,
                               isDark: isDark,
                               dateObs: controller.selectedDate,
                               onTap: () => controller.pickDate(context),
                               icon: Icons.calendar_today_rounded,
                             ),
                             const SizedBox(height: 16),
-                            sectionLabel(label: 'Time range', isDark: isDark),
+                            sectionLabel(label: 'time_range'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(
                                   child: _TimePickerTile(
-                                    label: 'Start time',
+                                    label: 'start_time'.tr,
                                     isDark: isDark,
                                     timeObs: controller.startTime,
-                                    onTap: () =>
-                                        controller.pickStartTime(context),
+                                    onTap: () => controller.pickStartTime(context),
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
                                   child: Icon(
                                     Icons.arrow_forward_rounded,
                                     size: 16,
@@ -88,11 +82,10 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
                                 ),
                                 Expanded(
                                   child: _TimePickerTile(
-                                    label: 'End time',
+                                    label: 'end_time'.tr,
                                     isDark: isDark,
                                     timeObs: controller.endTime,
-                                    onTap: () =>
-                                        controller.pickEndTime(context),
+                                    onTap: () => controller.pickEndTime(context),
                                   ),
                                 ),
                               ],
@@ -101,27 +94,19 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
                             Obx(() {
                               final dur = controller.durationLabel;
                               if (dur == '—') return const SizedBox.shrink();
-                              final valid = dur != 'Invalid';
+                              final valid = dur != 'invalid_time'.tr;
                               return Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: valid
-                                      ? const Color(
-                                          0xFFF59E0B,
-                                        ).withValues(alpha: 0.08)
-                                      : const Color(
-                                          0xFFDC2626,
-                                        ).withValues(alpha: 0.08),
+                                      ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
+                                      : const Color(0xFFDC2626).withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color: valid
-                                        ? const Color(
-                                            0xFFF59E0B,
-                                          ).withValues(alpha: 0.3)
-                                        : const Color(
-                                            0xFFDC2626,
-                                          ).withValues(alpha: 0.3),
+                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                                        : const Color(0xFFDC2626).withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Row(
@@ -139,8 +124,12 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
                                     Expanded(
                                       child: Text(
                                         valid
-                                            ? 'Total: $dur · ${controller.estimatedHours.toStringAsFixed(1)} hour(s)'
-                                            : 'End time must be after start time',
+                                            ? 'ot_total_duration'.trParams({
+                                                'dur': dur,
+                                                'hours': controller.estimatedHours
+                                                    .toStringAsFixed(1),
+                                              })
+                                            : 'end_after_start'.tr,
                                         style: TextStyle(
                                           color: valid
                                               ? const Color(0xFFF59E0B)
@@ -164,16 +153,12 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            sectionLabel(
-                              label: 'Reason / task description',
-                              isDark: isDark,
-                            ),
+                            sectionLabel(label: 'reason_task_desc'.tr, isDark: isDark),
                             const SizedBox(height: 10),
                             reasonField(
                               ctrl: controller.reasonCtrl,
                               isDark: isDark,
-                              hint:
-                                  'Describe the tasks to be completed during overtime and why OT is needed.',
+                              hint: 'ot_reason_hint'.tr,
                             ),
                           ],
                         ),
@@ -182,10 +167,10 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
 
                       noteCard(
                         isDark: isDark,
-                        lines: const [
-                          'OT must be pre-approved by your manager.',
-                          'Submit at least 1 day in advance where possible.',
-                          'Rate multiplier is based on company policy.',
+                        lines: [
+                          'ot_approval_note'.tr,
+                          'ot_advance_note'.tr,
+                          'ot_rate_note'.tr,
                         ],
                       ),
                     ],
@@ -198,7 +183,7 @@ class ApplyOvertimeScreen extends GetView<ApplyOvertimeController> {
       ),
       bottomNavigationBar: submitBar(
         isDark: isDark,
-        label: 'Submit OT request',
+        label: 'submit_ot_request'.tr,
         color: const Color(0xFFD97706),
         onTap: controller.submit,
         isSubmitting: controller.isSubmitting,
@@ -225,26 +210,26 @@ class _OvertimeHero extends StatelessWidget {
               : const [Color(0xFFD97706), Color(0xFFF59E0B)],
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.more_time_rounded, color: Colors.white, size: 26),
-          SizedBox(width: 12),
+          const Icon(Icons.more_time_rounded, color: Colors.white, size: 26),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Log overtime clearly',
-                  style: TextStyle(
+                  'log_ot_title'.tr,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Pick the correct OT type, add the hours, and explain the work for easier approval.',
-                  style: TextStyle(color: Color(0xFFFFF1D6), fontSize: 12),
+                  'log_ot_subtitle'.tr,
+                  style: const TextStyle(color: Color(0xFFFFF1D6), fontSize: 12),
                 ),
               ],
             ),
@@ -255,15 +240,15 @@ class _OvertimeHero extends StatelessWidget {
   }
 }
 
-// ── OT Type Selector ──
+// ── OT Type Selector ──────────────────────────────────────────────────────────
 class _OtTypeSelector extends GetView<ApplyOvertimeController> {
   final bool isDark;
   const _OtTypeSelector({required this.isDark});
 
   static const _types = [
-    (OvertimeType.weekday, 'Weekday', 0xFFD97706, '1.5×'),
-    (OvertimeType.weekend, 'Weekend', 0xFF185FA5, '2.0×'),
-    (OvertimeType.publicHoliday, 'Public Holiday', 0xFF7F77DD, '3.0×'),
+    (OvertimeType.weekday, 'ot_weekday', 0xFFD97706, '1.5×'),
+    (OvertimeType.weekend, 'ot_weekend', 0xFF185FA5, '2.0×'),
+    (OvertimeType.publicHoliday, 'ot_public_holiday', 0xFF7F77DD, '3.0×'),
   ];
 
   @override
@@ -281,14 +266,10 @@ class _OtTypeSelector extends GetView<ApplyOvertimeController> {
               onTap: () => controller.selectedType(t.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                margin: isLast
-                    ? EdgeInsets.zero
-                    : const EdgeInsets.only(right: 8),
+                margin: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: isActive
-                      ? color.withOpacity(0.12)
-                      : Colors.transparent,
+                  color: isActive ? color.withValues(alpha: 0.12) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isActive
@@ -315,7 +296,7 @@ class _OtTypeSelector extends GetView<ApplyOvertimeController> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      t.$2,
+                      t.$2.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: isActive
@@ -338,7 +319,7 @@ class _OtTypeSelector extends GetView<ApplyOvertimeController> {
   }
 }
 
-// ── Rate card ──
+// ── Rate card ─────────────────────────────────────────────────────────────────
 class _RateCard extends GetView<ApplyOvertimeController> {
   final bool isDark;
   const _RateCard({required this.isDark});
@@ -349,21 +330,20 @@ class _RateCard extends GetView<ApplyOvertimeController> {
       () => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF59E0B).withOpacity(0.08),
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.25)),
+          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.info_outline_rounded,
-              size: 16,
-              color: Color(0xFFF59E0B),
-            ),
+            const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFF59E0B)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${controller.typeLabel} rate: ${controller.rateLabel} of basic hourly rate',
+                'ot_rate_label'.trParams({
+                  'type': controller.typeLabel.tr,
+                  'rate': controller.rateLabel,
+                }),
                 style: const TextStyle(
                   color: Color(0xFFF59E0B),
                   fontSize: 12,
@@ -378,7 +358,7 @@ class _RateCard extends GetView<ApplyOvertimeController> {
   }
 }
 
-// ── Time picker tile ──
+// ── Time picker tile ──────────────────────────────────────────────────────────
 class _TimePickerTile extends StatelessWidget {
   final String label;
   final bool isDark;
@@ -418,9 +398,7 @@ class _TimePickerTile extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: isDark
-                      ? const Color(0xFF64748B)
-                      : const Color(0xFF94A3B8),
+                  color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.04,

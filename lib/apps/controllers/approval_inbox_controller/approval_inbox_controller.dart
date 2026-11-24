@@ -1,9 +1,13 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 
 class ApprovalInboxController extends GetxController {
   final isLoading = false.obs;
+  final errorMessage = Rxn<String>();
   final selectedType = 'All'.obs;
   final selectedStatus = 'Pending'.obs;
   final selectedDate = 'All dates'.obs;
@@ -18,6 +22,7 @@ class ApprovalInboxController extends GetxController {
     'Claim',
     'Correction',
     'Document',
+    'Remote work',
   ];
 
   final statuses = const ['Pending', 'Approved', 'Rejected', 'All'];
@@ -66,12 +71,19 @@ class ApprovalInboxController extends GetxController {
   Future<void> fetchApprovals() async {
     try {
       isLoading(true);
-      final response = await ApiClient.instance.get('/approval-inbox');
+      errorMessage(null);
+      final response = await ApiClient.instance.get(ApiList.approvalInbox);
       approvals.assignAll(
         (response.data['data'] as List? ?? const [])
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList(),
       );
+    } on DioException catch (e) {
+      debugPrint('APPROVAL_INBOX error: $e');
+      errorMessage(ApiClient.extractError(e, fallback: 'Failed to load approvals. Tap to retry.'));
+    } catch (e) {
+      debugPrint('APPROVAL_INBOX unexpected error: $e');
+      errorMessage('Something went wrong. Tap to retry.');
     } finally {
       isLoading(false);
     }
@@ -101,46 +113,69 @@ class ApprovalInboxController extends GetxController {
 
   Future<void> bulkApprove() async {
     final ids = selectedIds.toList();
+    var successCount = 0;
     for (final id in ids) {
-      await decide(id, 'Approved', silent: true);
+      if (await decide(id, 'Approved', silent: true)) successCount++;
     }
     selectedIds.clear();
-    AppToast.approved(
-      'Bulk approved',
-      '${ids.length} request(s) have been approved.',
-    );
+    if (successCount == ids.length) {
+      AppToast.approved(
+        'Bulk approved',
+        '$successCount request(s) have been approved.',
+      );
+    } else {
+      AppToast.approved(
+        'Bulk approved',
+        '$successCount of ${ids.length} approved. ${ids.length - successCount} failed.',
+      );
+    }
   }
 
-  Future<void> decide(
+  /// Returns true if the decision was saved successfully, false otherwise.
+  Future<bool> decide(
     String id,
     String decision, {
     String? remarks,
     bool silent = false,
   }) async {
-    await ApiClient.instance.post(
-      '/approval-inbox/decision',
-      data: {'id': id, 'decision': decision, 'remarks': remarks},
-    );
-    final index = approvals.indexWhere((item) => item['id'] == id);
-    if (index != -1) {
-      approvals[index] = {
-        ...approvals[index],
-        'status': decision,
-        'audit': [
-          ...(approvals[index]['audit'] as List? ?? const []),
-          'Admin marked as $decision${remarks?.isNotEmpty == true ? ': $remarks' : ''}',
-        ],
-      };
-      approvals.refresh();
-    }
-    if (!silent) {
-      final title = decision == 'Approved'
-          ? 'Request approved'
-          : 'Request rejected';
-      final message = 'Request has been ${decision.toLowerCase()}.';
-      decision == 'Approved'
-          ? AppToast.approved(title, message)
-          : AppToast.failed(title, message);
+    try {
+      await ApiClient.instance.post(
+        ApiList.approvalDecision,
+        data: {'id': id, 'decision': decision, 'remarks': remarks},
+      );
+      final index = approvals.indexWhere((item) => item['id'] == id);
+      if (index != -1) {
+        approvals[index] = {
+          ...approvals[index],
+          'status': decision,
+          'audit': [
+            ...(approvals[index]['audit'] as List? ?? const []),
+            'Admin marked as $decision${remarks?.isNotEmpty == true ? ': $remarks' : ''}',
+          ],
+        };
+        approvals.refresh();
+      }
+      if (!silent) {
+        final title = decision == 'Approved'
+            ? 'Request approved'
+            : 'Request rejected';
+        final message = 'Request has been ${decision.toLowerCase()}.';
+        decision == 'Approved'
+            ? AppToast.approved(title, message)
+            : AppToast.failed(title, message);
+      }
+      return true;
+    } on DioException catch (e) {
+      debugPrint('APPROVAL_INBOX decide error: ${e.type} | ${e.response?.statusCode} | ${e.response?.data}');
+      AppToast.failed(
+        'Decision failed',
+        ApiClient.extractError(e, fallback: 'Could not save decision. Try again.'),
+      );
+      return false;
+    } catch (e) {
+      debugPrint('APPROVAL_INBOX decide error: $e');
+      AppToast.failed('Decision failed', 'An unexpected error occurred.');
+      return false;
     }
   }
 }

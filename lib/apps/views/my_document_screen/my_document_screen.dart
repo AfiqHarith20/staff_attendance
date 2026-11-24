@@ -46,9 +46,9 @@ class MyDocumentsScreen extends GetView<MyDocumentsController> {
         },
         backgroundColor: const Color(0xFF185FA5),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Upload document',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        label: Text(
+          'upload_document'.tr,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -70,7 +70,7 @@ class _AppBar extends GetView<MyDocumentsController> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'My Documents',
+              'my_documents'.tr,
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 20,
@@ -138,14 +138,14 @@ class _DocumentHero extends GetView<MyDocumentsController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.folder_copy_rounded, color: Colors.white, size: 24),
-                SizedBox(width: 10),
+                const Icon(Icons.folder_copy_rounded, color: Colors.white, size: 24),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Document center',
-                    style: TextStyle(
+                    'document_center'.tr,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -156,7 +156,7 @@ class _DocumentHero extends GetView<MyDocumentsController> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Uploads, claim receipts and approval status in one place.',
+              'my_documents_subtitle'.tr,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.82),
                 fontSize: 12,
@@ -167,12 +167,12 @@ class _DocumentHero extends GetView<MyDocumentsController> {
             Row(
               children: [
                 _HeroStat(
-                  label: 'Documents',
+                  label: 'documents'.tr,
                   value: '${controller.documentCount}',
                 ),
-                _HeroStat(label: 'Claims', value: '${controller.claimCount}'),
+                _HeroStat(label: 'claims'.tr, value: '${controller.claimCount}'),
                 _HeroStat(
-                  label: 'Approved',
+                  label: 'approved'.tr,
                   value: '${controller.approvedCount}',
                   isLast: true,
                 ),
@@ -239,9 +239,9 @@ class _TabRow extends GetView<MyDocumentsController> {
   const _TabRow({required this.isDark});
 
   static const _tabs = [
-    (DocTab.all, 'All'),
-    (DocTab.documents, 'Documents'),
-    (DocTab.claims, 'Claims'),
+    (DocTab.all, 'all'),
+    (DocTab.documents, 'documents'),
+    (DocTab.claims, 'claims'),
   ];
 
   @override
@@ -274,7 +274,7 @@ class _TabRow extends GetView<MyDocumentsController> {
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Text(
-                      t.$2,
+                      t.$2.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: isActive
@@ -303,9 +303,9 @@ class _StatusFilters extends GetView<MyDocumentsController> {
   const _StatusFilters({required this.isDark});
 
   static const _statuses = [
-    ('pending', 'Pending', 0xFFF59E0B),
-    ('approved', 'Approved', 0xFF16A34A),
-    ('rejected', 'Rejected', 0xFFDC2626),
+    ('pending', 'pending', 0xFFF59E0B),
+    ('approved', 'approved', 0xFF16A34A),
+    ('rejected', 'rejected', 0xFFDC2626),
   ];
 
   @override
@@ -317,8 +317,8 @@ class _StatusFilters extends GetView<MyDocumentsController> {
         child: Row(
           children: [
             // All chip
-            _buildChip(null, 'All statuses', 0xFF185FA5),
-            ..._statuses.map((s) => _buildChip(s.$1, s.$2, s.$3)),
+            _buildChip(null, 'all_statuses'.tr, 0xFF185FA5),
+            ..._statuses.map((s) => _buildChip(s.$1, s.$2.tr, s.$3)),
           ],
         ),
       ),
@@ -459,7 +459,7 @@ class _DocCard extends GetView<MyDocumentsController> {
                         ],
                       ),
                     ),
-                    _StatusPill(label: item.statusLabel, color: statusColor),
+                    _StatusPill(label: item.statusLabel.tr, color: statusColor),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -475,7 +475,7 @@ class _DocCard extends GetView<MyDocumentsController> {
                       icon: item.isClaim
                           ? Icons.payments_rounded
                           : Icons.upload_file_rounded,
-                      label: item.isClaim ? 'Claim receipt' : 'Uploaded file',
+                      label: item.isClaim ? 'claim_receipt'.tr : 'uploaded_file'.tr,
                       isDark: isDark,
                     ),
                     const Spacer(),
@@ -559,13 +559,13 @@ class _DocCard extends GetView<MyDocumentsController> {
               ),
               const SizedBox(height: 16),
               _DetailRow(
-                title: 'Category',
+                title: 'category'.tr,
                 value: item.subtitle,
                 isDark: isDark,
               ),
               const SizedBox(height: 10),
               _DetailRow(
-                title: 'Submitted',
+                title: 'submitted'.tr,
                 value: item.dateLabel,
                 isDark: isDark,
               ),
@@ -573,7 +573,7 @@ class _DocCard extends GetView<MyDocumentsController> {
               Row(
                 children: [
                   Text(
-                    'Status',
+                    'status'.tr,
                     style: TextStyle(
                       color: isDark
                           ? const Color(0xFF94A3B8)
@@ -592,7 +592,7 @@ class _DocCard extends GetView<MyDocumentsController> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      item.statusLabel,
+                      item.statusLabel.tr,
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 11,
@@ -609,7 +609,7 @@ class _DocCard extends GetView<MyDocumentsController> {
                     child: OutlinedButton.icon(
                       onPressed: Get.back,
                       icon: const Icon(Icons.close_rounded, size: 18),
-                      label: const Text('Close'),
+                      label: Text('close'.tr),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -622,7 +622,7 @@ class _DocCard extends GetView<MyDocumentsController> {
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF185FA5),
                       ),
-                      label: Text(item.isClaim ? 'Open receipt' : 'Open file'),
+                      label: Text(item.isClaim ? 'open_receipt'.tr : 'open_file'.tr),
                     ),
                   ),
                 ],
@@ -759,7 +759,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'No documents found',
+            'no_documents'.tr,
             style: TextStyle(
               color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
               fontSize: 15,
@@ -768,7 +768,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Your uploads and claims will appear here',
+            'no_documents_hint'.tr,
             style: TextStyle(
               color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
               fontSize: 12,

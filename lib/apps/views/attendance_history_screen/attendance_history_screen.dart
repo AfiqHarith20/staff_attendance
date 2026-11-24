@@ -26,6 +26,14 @@ class AttendanceHistoryScreen extends GetView<AttendanceHistoryController> {
                 if (controller.isLoading.value) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                final error = controller.errorMessage.value;
+                if (error != null) {
+                  return _ErrorState(
+                    message: error,
+                    isDark: isDark,
+                    onRetry: controller.fetchRecords,
+                  );
+                }
                 final records = controller.filtered;
                 if (records.isEmpty) {
                   return _EmptyState(isDark: isDark);
@@ -49,9 +57,9 @@ class AttendanceHistoryScreen extends GetView<AttendanceHistoryController> {
         onPressed: () => Get.toNamed(Routes.correctionRequest),
         backgroundColor: const Color(0xFF185FA5),
         icon: const Icon(Icons.edit_calendar_rounded, color: Colors.white),
-        label: const Text(
-          'Request correction',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        label: Text(
+          'request_correction'.tr,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -72,7 +80,7 @@ class _Header extends GetView<AttendanceHistoryController> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Attendance History',
+              'attendance_history'.tr,
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 20,
@@ -118,21 +126,21 @@ class _Summary extends GetView<AttendanceHistoryController> {
         child: Row(
           children: [
             _SummaryTile(
-              label: 'Present',
+              label: 'present'.tr,
               value: '${controller.presentDays}',
               color: const Color(0xFF16A34A),
               isDark: isDark,
             ),
             const SizedBox(width: 10),
             _SummaryTile(
-              label: 'Issues',
+              label: 'issues'.tr,
               value: '${controller.issueDays}',
               color: const Color(0xFFF59E0B),
               isDark: isDark,
             ),
             const SizedBox(width: 10),
             _SummaryTile(
-              label: 'Hours',
+              label: 'hours'.tr,
               value: controller.totalHoursLabel,
               color: const Color(0xFF185FA5),
               isDark: isDark,
@@ -209,22 +217,8 @@ class _StatusFilters extends GetView<AttendanceHistoryController> {
           children: options.map((status) {
             final active = controller.selectedStatus.value == status;
             final label = status == null
-                ? 'All'
-                : AttendanceRecordModel(
-                    id: '',
-                    date: DateTime.now(),
-                    checkInAt: null,
-                    checkOutAt: null,
-                    checkInLocation: '',
-                    checkOutLocation: '',
-                    distanceM: 0,
-                    status: status,
-                    isLate: false,
-                    isEarlyCheckout: false,
-                    workingHoursLabel: '',
-                    remarks: '',
-                    auditStatus: '',
-                  ).statusLabel;
+                ? 'all'.tr
+                : AttendanceRecordModel.labelFor(status).tr;
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
@@ -311,9 +305,9 @@ class _RecordCard extends GetView<AttendanceHistoryController> {
                     Wrap(
                       spacing: 6,
                       children: [
-                        if (item.isLate) _Flag(label: 'Late'),
+                        if (item.isLate) _Flag(label: 'late'.tr),
                         if (item.isEarlyCheckout)
-                          _Flag(label: 'Early checkout'),
+                          _Flag(label: 'early_checkout'.tr),
                       ],
                     ),
                   ],
@@ -327,7 +321,7 @@ class _RecordCard extends GetView<AttendanceHistoryController> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                item.statusLabel,
+                item.statusLabel.tr,
                 style: TextStyle(
                   color: statusColor,
                   fontSize: 10,
@@ -382,9 +376,55 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'No attendance records found',
+        'no_attendance_records'.tr,
         style: TextStyle(
           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final bool isDark;
+  final VoidCallback onRetry;
+  const _ErrorState({
+    required this.message,
+    required this.isDark,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 40, color: muted),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded,
+                  color: Color(0xFF185FA5), size: 18),
+              label: const Text(
+                'Retry',
+                style: TextStyle(
+                  color: Color(0xFF185FA5),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

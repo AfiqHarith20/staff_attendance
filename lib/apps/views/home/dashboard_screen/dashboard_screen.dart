@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-
 import '../../../controllers/bottom_nav_controller/bottom_nav_controller.dart';
 import '../../../controllers/dashboard_controller/dashboard_controller.dart';
 import '../../../routes/routes.dart';
 import '../../../themes/app_colors.dart';
 import '../../../../widgets/responsive_page.dart';
-import '../../../../widgets/app_page_widgets.dart';
 
 // ── Private helper data class ──────────────────────────────────────────────
 class _QuickItem {
@@ -23,45 +21,6 @@ class _QuickItem {
   });
 }
 
-class _AdminHeroMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  const _AdminHeroMetric({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.78),
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Screen ──────────────────────────────────────────────────────────────────
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -74,10 +33,6 @@ class DashboardScreen extends StatelessWidget {
     final c = Get.find<DashboardController>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomPad = ResponsivePage.isWide(context) ? 24.0 : 12.0;
-
-    if (c.isAdmin) {
-      return _buildAdminDashboard(context, c, isDark, bottomPad);
-    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -108,304 +63,35 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAdminDashboard(
-    BuildContext context,
-    DashboardController c,
-    bool isDark,
-    double bottomPad,
-  ) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: ResponsivePage(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
-            children: [
-              _buildHeader(c, isDark),
-              const SizedBox(height: 14),
-              _buildAdminHero(c, isDark),
-              const SizedBox(height: 16),
-              _buildAdminQuickActions(c, isDark),
-              const SizedBox(height: 16),
-              _buildAdminStatsGrid(c, isDark),
-              const SizedBox(height: 16),
-              _buildTodayExceptions(c, isDark),
-            ],
-          ),
+  // ── Shared avatar widget — shows photo if available, initials otherwise ──
+  Widget _buildAvatar(DashboardController c, {double radius = 22}) {
+    final url = GetStorage().read<String>('avatar_url');
+    if (url != null && url.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: AppColors.primary,
+        backgroundImage: NetworkImage(url),
+        onBackgroundImageError: (_, _) {},
+        child: null,
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primary,
+      child: Text(
+        c.userInitials,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: radius * 0.72,
         ),
-      ),
-    );
-  }
-
-  Widget _buildAdminHero(DashboardController c, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F4C81), Color(0xFF185FA5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Admin command center',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${c.dateString} · ${c.timeString}',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.82)),
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final itemWidth = (constraints.maxWidth - 16) / 3;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children:
-                    const [
-                      _AdminHeroMetric(label: 'Pending', value: '7'),
-                      _AdminHeroMetric(label: 'Exceptions', value: '10'),
-                      _AdminHeroMetric(label: 'Missing out', value: '5'),
-                    ].map((item) {
-                      return SizedBox(width: itemWidth, child: item);
-                    }).toList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAdminQuickActions(DashboardController c, bool isDark) {
-    final actions = [
-      _QuickItem(
-        icon: Icons.groups_rounded,
-        label: 'Team',
-        color: const Color(0xFF16A34A),
-        onTap: () => c.openRoute(Routes.teamAttendance),
-      ),
-      _QuickItem(
-        icon: Icons.approval_rounded,
-        label: 'Approvals',
-        color: const Color(0xFFF59E0B),
-        onTap: () => c.openRoute(Routes.approvalInbox),
-      ),
-      _QuickItem(
-        icon: Icons.bar_chart_rounded,
-        label: 'Reports',
-        color: const Color(0xFF185FA5),
-        onTap: () => c.openRoute(Routes.adminReports),
-      ),
-      _QuickItem(
-        icon: Icons.manage_accounts_rounded,
-        label: 'Employees',
-        color: const Color(0xFF7F77DD),
-        onTap: () => c.openRoute(Routes.employeeManagement),
-      ),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Admin tools',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 360;
-            final itemWidth = compact
-                ? (constraints.maxWidth - 8) / 2
-                : (constraints.maxWidth - 24) / 4;
-            return Wrap(
-              spacing: 8,
-              runSpacing: 12,
-              children: actions
-                  .map(
-                    (item) => SizedBox(
-                      width: itemWidth,
-                      child: _buildQuickItem(item, isDark),
-                    ),
-                  )
-                  .toList(),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAdminStatsGrid(DashboardController c, bool isDark) {
-    final cardBg = isDark ? const Color(0xFF0D2335) : Colors.white;
-    return Obx(
-      () => AppAdaptiveGrid(
-        itemCount: c.adminStats.length,
-        minChildWidth: 160,
-        childAspectRatio: 1.85,
-        itemBuilder: (_, index) {
-          final item = c.adminStats[index];
-          final color = Color(item.colorValue);
-          return Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE6EEF6),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${item.count}',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.label,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  item.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTodayExceptions(DashboardController c, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D2335) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : const Color(0xFFE6EEF6),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Today exceptions',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Obx(
-            () => Column(
-              children: c.todayExceptions.map((item) {
-                final color = Color(item.accentColorValue);
-                return InkWell(
-                  onTap: () => c.openRoute(item.route),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: color.withValues(alpha: 0.12),
-                          child: Icon(
-                            Icons.priority_high_rounded,
-                            color: color,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppColors.textPrimary,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                item.subtitle,
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          item.status,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   // ── Header: greeting + avatar ──────────────────────────────────────────
   Widget _buildHeader(DashboardController c, bool isDark) {
-    final role = (GetStorage().read<String>('user_role') ?? 'staff')
-        .toLowerCase();
-    final targetIndex =
-        const {'admin', 'super_admin', 'owner', 'hr', 'manager'}.contains(role)
-        ? 4
-        : 3;
+    const targetIndex = 3; // Profile tab (index 3 in the unified 4-tab layout)
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -432,6 +118,55 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
         ),
+        Obx(() {
+          final count = c.unreadNotifications.value;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                tooltip: 'Notifications',
+                onPressed: () => Get.toNamed(Routes.notifications),
+                icon: Icon(
+                  Icons.notifications_rounded,
+                  color: isDark ? Colors.white70 : AppColors.textPrimary,
+                ),
+              ),
+              if (count > 0)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF0F172A)
+                              : Colors.white,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        count > 99 ? '99+' : '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
+        const SizedBox(width: 4),
         GestureDetector(
           onTap: () {
             final nav = Get.isRegistered<BottomNavController>()
@@ -439,18 +174,7 @@ class DashboardScreen extends StatelessWidget {
                 : Get.put(BottomNavController());
             nav.setIndex(targetIndex);
           },
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.primary,
-            child: Text(
-              c.userInitials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-          ),
+          child: _buildAvatar(c, radius: 22),
         ),
       ],
     );
@@ -572,29 +296,160 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            // Check In Now button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: c.onCheckInTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            // Check In / Check Out button
+            Builder(builder: (ctx) {
+              final isLoading = scan.isCheckingIn.value;
+              final alreadyIn = scan.checkedInToday.value;
+              final isDark = Theme.of(ctx).brightness == Brightness.dark;
+
+              void onCheckOutTap() {
+                final timeNow = TimeOfDay.fromDateTime(DateTime.now()).format(ctx);
+                final dateNow = MaterialLocalizations.of(ctx).formatFullDate(DateTime.now());
+                showDialog<void>(
+                  context: ctx,
+                  builder: (dialogCtx) => AlertDialog(
+                    backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    title: Text(
+                      'confirm_check_out'.tr,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'check_out_confirm_body'.tr,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'check_out_time_label'.tr,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                timeNow,
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              Text(
+                                dateNow,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                        child: Text(
+                          'cancel'.tr,
+                          style: const TextStyle(color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(dialogCtx).pop();
+                          c.confirmCheckOut();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFDC2626),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'check_out'.tr,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'check_in_now'.tr,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                );
+              }
+
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : alreadyIn
+                          ? onCheckOutTap
+                          : c.onCheckInTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: alreadyIn
+                        ? const Color(0xFFDC2626)
+                        : AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: alreadyIn
+                        ? const Color(0xFFDC2626).withValues(alpha: 0.5)
+                        : AppColors.primary.withValues(alpha: 0.5),
+                    disabledForegroundColor: Colors.white70,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          alreadyIn ? 'check_out_now'.tr : 'check_in_now'.tr,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
                 ),
-              ),
-            ),
+              );
+            }),
             const SizedBox(height: 10),
             // Last check-in
             Center(
@@ -612,13 +467,14 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+
   // ── 3 stat cards ────────────────────────────────────────────────────────
   Widget _buildStatRow(DashboardController c, bool isDark) {
     final cardBg = isDark ? const Color(0xFF0D2335) : Colors.white;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 360;
+        final compact = constraints.maxWidth < 320;
         final cardWidth = compact
             ? constraints.maxWidth
             : (constraints.maxWidth - 20) / 3;
@@ -1208,7 +1064,7 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              final compact = constraints.maxWidth < 360;
+              final compact = constraints.maxWidth < 300;
               final itemWidth = compact
                   ? constraints.maxWidth
                   : (constraints.maxWidth - 24) / 3;

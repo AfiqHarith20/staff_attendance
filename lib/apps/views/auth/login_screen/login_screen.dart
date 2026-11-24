@@ -26,6 +26,17 @@ class _LoginScreenState extends State<LoginScreen> {
   LoginController get controller => Get.find<LoginController>();
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-fill saved credentials when remember me is on
+    final c = Get.find<LoginController>();
+    if (c.rememberMe.value) {
+      _emailCtrl.text = c.savedEmail;
+      _passwordCtrl.text = c.savedPassword;
+    }
+  }
+
+  @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
@@ -423,25 +434,72 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
 
-                              // ── Forgot password ──
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () =>
-                                      Get.toNamed(Routes.forgotPassword),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: isDark ? accent : primary,
-                                    padding: EdgeInsets.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                              // ── Remember me + Forgot password ──
+                              Row(
+                                children: [
+                                  Obx(() {
+                                    final checked = controller.rememberMe.value;
+                                    return GestureDetector(
+                                      onTap: controller.toggleRememberMe,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 180),
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              color: checked
+                                                  ? (isDark ? accent : primary)
+                                                  : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: checked
+                                                    ? (isDark ? accent : primary)
+                                                    : inputBorder,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: checked
+                                                ? const Icon(
+                                                    Icons.check_rounded,
+                                                    size: 13,
+                                                    color: Colors.white,
+                                                  )
+                                                : null,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Remember me',
+                                            style: TextStyle(
+                                              color: subColor,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                  const Spacer(),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Get.toNamed(Routes.forgotPassword),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: isDark ? accent : primary,
+                                      padding: EdgeInsets.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      'forgot_password'.tr,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                   ),
-                                  child: Text(
-                                    'forgot_password'.tr,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
+                                ],
                               ),
 
                               const SizedBox(height: 8),

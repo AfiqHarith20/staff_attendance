@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:staff_attendance/apps/views/admin/admin_more_screen.dart';
-import 'package:staff_attendance/apps/views/admin/admin_reports_screen.dart';
+import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/controllers/other_controller/other_controller.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/apps/themes/app_colors.dart';
-import 'package:staff_attendance/apps/views/approvals/approval_inbox_screen.dart';
 import 'package:staff_attendance/apps/views/home/dashboard_screen/dashboard_screen.dart';
 import 'package:staff_attendance/apps/views/home/my_attendance_screen/my_attendance_screen.dart';
 import 'package:staff_attendance/apps/views/home/other_screen/other_screen.dart';
 import 'package:staff_attendance/apps/views/home/profile_screen/profile_screen.dart';
-import 'package:staff_attendance/apps/views/attendance/team_attendance_screen.dart';
 import 'package:staff_attendance/apps/controllers/bottom_nav_controller/bottom_nav_controller.dart';
-import 'package:staff_attendance/apps/controllers/profile_controller/profile_controller.dart';
 
 class BottomNavScreen extends StatefulWidget {
   const BottomNavScreen({super.key});
@@ -20,31 +18,19 @@ class BottomNavScreen extends StatefulWidget {
   State<BottomNavScreen> createState() => _BottomNavScreenState();
 }
 
-class _BottomNavScreenState extends State<BottomNavScreen> {
-  String get _role =>
-      (GetStorage().read<String>('user_role') ?? 'staff').toLowerCase();
-
-  bool get _isElevatedRole =>
-      const {'admin', 'super_admin', 'owner', 'hr', 'manager'}.contains(_role);
-
-  List<Widget> get _pages => _isElevatedRole
-      ? const [
-          DashboardScreen(),
-          TeamAttendanceScreen(showBackButton: false),
-          ApprovalInboxScreen(showBackButton: false),
-          AdminReportsScreen(showBackButton: false),
-          AdminMoreScreen(),
-        ]
-      : const [
-          DashboardScreen(),
-          MyAttendanceScreen(),
-          OtherScreen(),
-          ProfileScreen(),
-        ];
+class _BottomNavScreenState extends State<BottomNavScreen>
+    with WidgetsBindingObserver {
+  static const List<Widget> _pages = [
+    DashboardScreen(),
+    MyAttendanceScreen(),
+    OtherScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Ensure BottomNavController is registered and apply incoming argument if present
     if (!Get.isRegistered<BottomNavController>()) {
       Get.put(BottomNavController());
@@ -62,6 +48,39 @@ class _BottomNavScreenState extends State<BottomNavScreen> {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshPermissionsFromApi();
+    }
+  }
+
+  Future<void> _refreshPermissionsFromApi() async {
+    try {
+      final response = await ApiClient.instance.get(ApiList.currentUser);
+      final data = response.data['data'] as Map<String, dynamic>? ?? {};
+      final isAdmin = data['is_admin'] as bool? ?? false;
+      final rawPerms = data['permissions'];
+      final perms = rawPerms is List
+          ? rawPerms.map((e) => e.toString()).toList()
+          : <String>[];
+      final box = GetStorage();
+      await box.write('is_admin', isAdmin);
+      await box.write('user_permissions', perms);
+      if (Get.isRegistered<OtherController>()) {
+        Get.find<OtherController>().refreshPermissions();
+      }
+    } catch (_) {
+      // non-blocking — permissions stay as-is until next successful refresh
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final primary = AppColors.primary;
 
@@ -69,20 +88,12 @@ class _BottomNavScreenState extends State<BottomNavScreen> {
     return Obx(() {
       final isWide = MediaQuery.of(context).size.width >= 700;
       final pages = _pages;
-      final destinations = _isElevatedRole
-          ? const [
-              _NavItem(Icons.home_rounded, 'Home'),
-              _NavItem(Icons.groups_rounded, 'Team'),
-              _NavItem(Icons.approval_rounded, 'Approvals'),
-              _NavItem(Icons.bar_chart_rounded, 'Reports'),
-              _NavItem(Icons.apps_rounded, 'More'),
-            ]
-          : [
-              _NavItem(Icons.home_rounded, 'home'.tr),
-              _NavItem(Icons.fact_check_rounded, 'attendance'.tr),
-              _NavItem(Icons.apps_rounded, 'other'.tr),
-              _NavItem(Icons.person_rounded, 'profile'.tr),
-            ];
+      final destinations = [
+        _NavItem(Icons.home_rounded, 'home'.tr),
+        _NavItem(Icons.fact_check_rounded, 'attendance'.tr),
+        _NavItem(Icons.apps_rounded, 'other'.tr),
+        _NavItem(Icons.person_rounded, 'profile'.tr),
+      ];
 
       if (nav.index.value >= pages.length) {
         nav.setIndex(0);
@@ -133,12 +144,7 @@ class _BottomNavScreenState extends State<BottomNavScreen> {
                 labelType: extended
                     ? NavigationRailLabelType.none
                     : NavigationRailLabelType.all,
-                trailing: _isElevatedRole
-                    ? _AdminLogoutRailButton(
-                        extended: extended,
-                        onPressed: _confirmLogout,
-                      )
-                    : null,
+                trailing: null,
                 destinations: destinations
                     .map(
                       (item) => NavigationRailDestination(
@@ -178,12 +184,6 @@ class _BottomNavScreenState extends State<BottomNavScreen> {
     });
   }
 
-  void _confirmLogout() {
-    final profile = Get.isRegistered<ProfileController>()
-        ? Get.find<ProfileController>()
-        : Get.put(ProfileController());
-    profile.confirmLogout();
-  }
 }
 
 class _NavItem {
@@ -191,45 +191,4 @@ class _NavItem {
   final String label;
 
   const _NavItem(this.icon, this.label);
-}
-
-class _AdminLogoutRailButton extends StatelessWidget {
-  final bool extended;
-  final VoidCallback onPressed;
-
-  const _AdminLogoutRailButton({
-    required this.extended,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: extended
-              ? TextButton.icon(
-                  onPressed: onPressed,
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Logout'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFDC2626),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                )
-              : IconButton(
-                  tooltip: 'Logout',
-                  onPressed: onPressed,
-                  icon: const Icon(Icons.logout_rounded),
-                  color: isDark
-                      ? const Color(0xFFFCA5A5)
-                      : const Color(0xFFDC2626),
-                ),
-        ),
-      ),
-    );
-  }
 }

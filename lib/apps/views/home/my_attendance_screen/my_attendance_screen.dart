@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/scan_controller/scan_controller.dart';
+import '../../../models/attendance_history_model.dart';
 import '../../../routes/routes.dart';
 import '../../../../widgets/responsive_page.dart';
 
@@ -21,24 +21,19 @@ class MyAttendanceScreen extends GetView<ScanController> {
       body: SafeArea(
         child: ResponsivePage(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Header(isDark: isDark),
                 const SizedBox(height: 16),
-                _MapCard(isDark: isDark),
-                const SizedBox(height: 12),
-                _StatusCard(isDark: isDark),
-                const SizedBox(height: 10),
-                _CheckInButton(isDark: isDark),
-                const SizedBox(height: 10),
-                _InfoHintWidget(isDark: isDark),
+                _TodaySummaryCard(isDark: isDark),
                 const SizedBox(height: 12),
                 _AttendanceActions(isDark: isDark),
-                const SizedBox(height: 12),
-                _DocumentShortcutCard(isDark: isDark),
                 const SizedBox(height: 16),
-                _TodayLogs(isDark: isDark),
+                _DocumentShortcutCard(isDark: isDark),
+                const SizedBox(height: 24),
+                _WeeklyLog(isDark: isDark),
               ],
             ),
           ),
@@ -48,97 +43,31 @@ class MyAttendanceScreen extends GetView<ScanController> {
   }
 }
 
-class _AttendanceActions extends StatelessWidget {
-  final bool isDark;
-  const _AttendanceActions({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => Get.toNamed(Routes.attendanceHistory),
-            icon: const Icon(Icons.history_rounded, size: 18),
-            label: const Text('History'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF185FA5),
-              side: const BorderSide(color: Color(0xFF185FA5)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => Get.toNamed(Routes.correctionRequest),
-            icon: const Icon(Icons.edit_calendar_rounded, size: 18),
-            label: const Text('Correct'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-              side: BorderSide(
-                color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
+// ── Header ────────────────────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
   final bool isDark;
   const _Header({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'My Attendance',
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              DateFormat('EEEE, d MMM yyyy').format(DateTime.now()),
-              style: TextStyle(
-                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            ),
+        Text(
+          'My Attendance',
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
           ),
-          child: Text(
-            'Attendance only',
-            style: TextStyle(
-              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          DateFormat('EEEE, d MMM yyyy').format(DateTime.now()),
+          style: TextStyle(
+            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+            fontSize: 12,
           ),
         ),
       ],
@@ -146,233 +75,357 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _MapCard extends GetView<ScanController> {
+// ── Today's summary card ──────────────────────────────────────────────────────
+class _TodaySummaryCard extends GetView<ScanController> {
   final bool isDark;
-  const _MapCard({required this.isDark});
+  const _TodaySummaryCard({required this.isDark});
+
+  static const _blue = Color(0xFF185FA5);
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: 170,
-        child: Obx(() {
-          final hasPos = controller.currentLat.value != 0.0;
-          final office = LatLng(controller.officeLat, controller.officeLng);
-          final staff = LatLng(
-            controller.currentLat.value,
-            controller.currentLng.value,
-          );
-          final inRange = controller.isInRange;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final borderColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final muted =
+        isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+    final primary =
+        isDark ? Colors.white : const Color(0xFF0F172A);
+    final timeFmt = DateFormat('h:mm a');
 
-          return Stack(
-            children: [
-              GoogleMap(
-                key: ValueKey(hasPos),
-                initialCameraPosition: CameraPosition(
-                  target: hasPos ? staff : office,
-                  zoom: 16,
+    return Obx(() {
+      final logs = controller.todayLogs;
+      final checkInLog =
+          logs.where((l) => l.type == 'checkin').lastOrNull;
+      final checkOutLog =
+          logs.where((l) => l.type == 'checkout').lastOrNull;
+      final checkedIn = controller.checkedInToday.value;
+      final isLoading = controller.isLoadingLogs.value;
+
+      // Derive status label + colour
+      final (Color statusColor, String statusLabel) = switch (true) {
+        _ when isLoading => (muted, 'Loading…'),
+        _ when checkInLog == null => (muted, 'Not checked in'),
+        _ when checkOutLog != null => (
+            const Color(0xFF16A34A),
+            'Completed',
+          ),
+        _ when checkedIn => (
+            const Color(0xFF185FA5),
+            'In progress',
+          ),
+        _ => (muted, 'No record'),
+      };
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title row + status badge
+            Row(
+              children: [
+                Text(
+                  "Today's Attendance",
+                  style: TextStyle(
+                    color: primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                myLocationEnabled: false,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                compassEnabled: false,
-                rotateGesturesEnabled: false,
-                tiltGesturesEnabled: false,
-                zoomGesturesEnabled: false,
-                scrollGesturesEnabled: false,
-                circles: {
-                  Circle(
-                    circleId: const CircleId('office_radius'),
-                    center: office,
-                    radius: controller.radiusM,
-                    fillColor: (inRange
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFDC2626))
-                        .withValues(alpha: 0.12),
-                    strokeColor: (inRange
-                            ? const Color(0xFF16A34A)
-                            : const Color(0xFFDC2626))
-                        .withValues(alpha: 0.4),
-                    strokeWidth: 2,
-                  ),
-                },
-                markers: {
-                  Marker(
-                    markerId: const MarkerId('office'),
-                    position: office,
-                    icon: BitmapDescriptor.defaultMarkerWithHue(
-                      BitmapDescriptor.hueAzure,
-                    ),
-                    infoWindow: const InfoWindow(title: 'Clokk HQ · Cyberjaya'),
-                  ),
-                  if (hasPos)
-                    Marker(
-                      markerId: const MarkerId('staff'),
-                      position: staff,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                        inRange
-                            ? BitmapDescriptor.hueGreen
-                            : BitmapDescriptor.hueRed,
-                      ),
-                      infoWindow: InfoWindow(
-                        title: inRange ? 'In Range' : 'Out of Range',
-                      ),
-                    ),
-                },
-              ),
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.black.withValues(alpha: 0.75)
-                        : Colors.white.withValues(alpha: 0.9),
+                    color: statusColor.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Clokk HQ · Cyberjaya',
+                    statusLabel,
                     style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
                     ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // IN / OUT / HRS row
+            if (isLoading)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _blue,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Row(
+                children: [
+                  _SummaryCell(
+                    label: 'CHECK IN',
+                    value: checkInLog != null
+                        ? timeFmt.format(checkInLog.time)
+                        : '—',
+                    valueColor: checkInLog != null
+                        ? const Color(0xFF16A34A)
+                        : muted,
+                    isDark: isDark,
+                  ),
+                  _SummaryDivider(isDark: isDark),
+                  _SummaryCell(
+                    label: 'CHECK OUT',
+                    value: checkOutLog != null
+                        ? timeFmt.format(checkOutLog.time)
+                        : '—',
+                    valueColor: checkOutLog != null
+                        ? const Color(0xFFDC2626)
+                        : muted,
+                    isDark: isDark,
+                  ),
+                  _SummaryDivider(isDark: isDark),
+                  _SummaryCell(
+                    label: 'LOCATION',
+                    value: checkInLog != null
+                        ? (checkInLog.inRange ? 'In range' : 'Out of range')
+                        : '—',
+                    valueColor: checkInLog != null
+                        ? (checkInLog.inRange
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFF59E0B))
+                        : muted,
+                    isDark: isDark,
+                  ),
+                ],
               ),
-              if (hasPos)
-                Positioned(
-                  bottom: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: inRange
-                          ? const Color(0xFF16A34A).withValues(alpha: 0.85)
-                          : const Color(0xFFDC2626).withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Obx(
-                      () => Text(
-                        '${controller.distanceM.value.toStringAsFixed(0)}m away',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+            // Location name hint
+            if (checkInLog != null &&
+                controller.locationName.value != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.location_on_rounded, size: 12, color: muted),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      controller.locationName.value!,
+                      style: TextStyle(fontSize: 11, color: muted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
+                ],
+              ),
             ],
-          );
-        }),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _SummaryCell extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color valueColor;
+  final bool isDark;
+
+  const _SummaryCell({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final muted =
+        isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: muted,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: valueColor,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _StatusCard extends GetView<ScanController> {
+class _SummaryDivider extends StatelessWidget {
   final bool isDark;
-  const _StatusCard({required this.isDark});
+  const _SummaryDivider({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final status = controller.checkInStatus.value;
+    return Container(
+      width: 1,
+      height: 36,
+      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+    );
+  }
+}
 
-      final (
-        Color accent,
-        Color bg,
-        Color border,
-        IconData icon,
-        String title,
-        String sub,
-      ) = switch (status) {
-        CheckInStatus.locating => (
-          const Color(0xFF378ADD),
-          const Color(0xFF378ADD).withValues(alpha: 0.08),
-          const Color(0xFF378ADD).withValues(alpha: 0.2),
-          Icons.gps_fixed_rounded,
-          'Getting your location…',
-          'Please wait',
-        ),
-        CheckInStatus.inRange => (
-          const Color(0xFF16A34A),
-          const Color(0xFF16A34A).withValues(alpha: 0.08),
-          const Color(0xFF16A34A).withValues(alpha: 0.2),
-          Icons.location_on_rounded,
-          "You're within range",
-          '${controller.distanceM.value.toStringAsFixed(0)}m from office · max ${controller.radiusM.toInt()}m',
-        ),
-        CheckInStatus.outOfRange => (
-          const Color(0xFFDC2626),
-          const Color(0xFFDC2626).withValues(alpha: 0.06),
-          const Color(0xFFDC2626).withValues(alpha: 0.15),
-          Icons.location_off_rounded,
-          'Too far from office',
-          '${controller.distanceM.value.toStringAsFixed(0)}m away · must be within ${controller.radiusM.toInt()}m',
-        ),
-        CheckInStatus.success => (
-          const Color(0xFF16A34A),
-          const Color(0xFF16A34A).withValues(alpha: 0.08),
-          const Color(0xFF16A34A).withValues(alpha: 0.2),
-          Icons.check_circle_outline_rounded,
-          'Check-in successful!',
-          controller.checkInMessage.value,
-        ),
-        CheckInStatus.alreadyIn => (
-          const Color(0xFF378ADD),
-          const Color(0xFF378ADD).withValues(alpha: 0.08),
-          const Color(0xFF378ADD).withValues(alpha: 0.2),
-          Icons.info_outline_rounded,
-          'Already checked in',
-          controller.checkInMessage.value,
-        ),
-        CheckInStatus.error => (
-          const Color(0xFFF59E0B),
-          const Color(0xFFF59E0B).withValues(alpha: 0.08),
-          const Color(0xFFF59E0B).withValues(alpha: 0.2),
-          Icons.warning_amber_rounded,
-          'Location unavailable',
-          controller.locationError.value,
-        ),
-        _ => (
-          const Color(0xFF94A3B8),
-          const Color(0xFF94A3B8).withValues(alpha: 0.08),
-          const Color(0xFF94A3B8).withValues(alpha: 0.2),
-          Icons.location_searching_rounded,
-          'Checking location…',
-          '',
-        ),
-      };
+// ── History + Correct action buttons ─────────────────────────────────────────
+class _AttendanceActions extends StatelessWidget {
+  final bool isDark;
+  const _AttendanceActions({required this.isDark});
 
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
+  @override
+  Widget build(BuildContext context) {
+    final borderColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionChip(
+            icon: Icons.history_rounded,
+            label: 'History',
+            color: const Color(0xFF185FA5),
+            borderColor: borderColor,
+            onTap: () => Get.toNamed(Routes.attendanceHistory),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionChip(
+            icon: Icons.edit_calendar_rounded,
+            label: 'Correct',
+            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+            borderColor: borderColor,
+            onTap: () => Get.toNamed(Routes.correctionRequest),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionChip(
+            icon: Icons.access_time_rounded,
+            label: 'Work Hrs',
+            color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+            borderColor: borderColor,
+            onTap: () => Get.toNamed(Routes.workHoursSummary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color borderColor;
+  final VoidCallback onTap;
+
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.borderColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 44,
         decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Document shortcut ─────────────────────────────────────────────────────────
+class _DocumentShortcutCard extends StatelessWidget {
+  final bool isDark;
+  const _DocumentShortcutCard({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.toNamed(Routes.myDocuments),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          ),
         ),
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFF185FA5).withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: status == CheckInStatus.locating
-                  ? Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: accent),
-                    )
-                  : Icon(icon, color: accent, size: 22),
+              child: const Icon(Icons.folder_open_rounded,
+                  color: Color(0xFF185FA5), size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -380,399 +433,337 @@ class _StatusCard extends GetView<ScanController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    'Need to upload MC or proof?',
                     style: TextStyle(
-                      color: accent,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (sub.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      sub,
-                      style: TextStyle(
-                        color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
-                        fontSize: 11,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Use My Documents for uploads, filters, and file history.',
+                    style: TextStyle(
+                      color:
+                          isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                      fontSize: 11,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Obx(
-                  () => Switch.adaptive(
-                    value: controller.geofenceEnabled.value,
-                    onChanged: controller.setGeofenceEnabled,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Geofence',
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    });
-  }
-}
-
-class _CheckInButton extends GetView<ScanController> {
-  final bool isDark;
-  const _CheckInButton({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final status = controller.checkInStatus.value;
-      final isLoading = controller.isCheckingIn.value;
-      final isDone =
-          status == CheckInStatus.success || status == CheckInStatus.alreadyIn;
-      final hasTodayCheckInLog = controller.todayLogs.any(
-        (log) => log.type == 'checkin',
-      );
-      final hasCheckedInToday =
-          controller.checkedInToday.value && hasTodayCheckInLog;
-      final canCheckIn =
-          controller.isInRange && !isLoading && !isDone && !hasCheckedInToday;
-      final canCheckOut = hasCheckedInToday && !isLoading;
-
-      return SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: canCheckIn ? controller.checkIn : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDone
-                      ? const Color(0xFF1E293B)
-                      : canCheckIn
-                      ? const Color(0xFF185FA5)
-                      : isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFE2E8F0),
-                  disabledBackgroundColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFE2E8F0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-                child: isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        isDone ? 'checked_in'.tr : 'check_in_now'.tr,
-                        style: TextStyle(
-                          color: canCheckIn || isDone
-                              ? Colors.white
-                              : isDark
-                              ? const Color(0xFF475569)
-                              : const Color(0xFF94A3B8),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: canCheckOut ? controller.checkOut : null,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: canCheckOut
-                        ? const Color(0xFF185FA5)
-                        : isDark
-                        ? const Color(0xFF334155)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                  backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: 0.02)
-                      : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: Text(
-                  'check_out'.tr,
-                  style: TextStyle(
-                    color: canCheckOut
-                        ? const Color(0xFF185FA5)
-                        : const Color(0xFF94A3B8),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-}
-
-class _InfoHintWidget extends StatelessWidget {
-  final bool isDark;
-  const _InfoHintWidget({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF378ADD).withValues(alpha: 0.08)
-            : const Color(0xFFE6F1FB),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.shield_outlined,
-            size: 14,
-            color: isDark ? const Color(0xFF378ADD) : const Color(0xFF185FA5),
-          ),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Location is verified server-side. GPS coordinates are recorded with each attendance event.',
+            const SizedBox(width: 8),
+            const Text(
+              'Open',
               style: TextStyle(
                 color: Color(0xFF185FA5),
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DocumentShortcutCard extends StatelessWidget {
-  final bool isDark;
-  const _DocumentShortcutCard({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFF185FA5).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.folder_open_rounded, color: Color(0xFF185FA5)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Need to upload MC or proof?',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Use My Documents for uploads, filters, and file history.',
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () => Get.toNamed(Routes.myDocuments),
-            child: const Text('Open'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodayLogs extends GetView<ScanController> {
-  final bool isDark;
-  const _TodayLogs({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Today's log",
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            GestureDetector(
-              onTap: controller.fetchTodayLogs,
-              child: Text(
-                'Refresh',
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF378ADD) : const Color(0xFF185FA5),
-                  fontSize: 11,
-                ),
-              ),
-            ),
           ],
         ),
-        const SizedBox(height: 8),
-        Obx(() {
-          if (controller.isLoadingLogs.value) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          if (controller.todayLogs.isEmpty) {
-            return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                ),
-              ),
-              child: Text(
-                'No attendance activity yet today',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
-                  fontSize: 13,
-                ),
-              ),
-            );
-          }
-          return Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+      ),
+    );
+  }
+}
+
+// ── Weekly log ────────────────────────────────────────────────────────────────
+class _WeeklyLog extends GetView<ScanController> {
+  final bool isDark;
+  const _WeeklyLog({required this.isDark});
+
+  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _blue = Color(0xFF185FA5);
+
+  Color _statusColor(AttendanceRecordStatus? s) => switch (s) {
+        AttendanceRecordStatus.present => const Color(0xFF16A34A),
+        AttendanceRecordStatus.late => const Color(0xFFF59E0B),
+        AttendanceRecordStatus.absent => const Color(0xFFDC2626),
+        AttendanceRecordStatus.leave => const Color(0xFF185FA5),
+        AttendanceRecordStatus.issue => const Color(0xFF7F77DD),
+        null => const Color(0xFF94A3B8),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final borderColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final dividerColor = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : const Color(0xFFF1F5F9);
+    final muted = isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8);
+    final primary = isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A);
+    final timeFmt = DateFormat('h:mm a');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This week',
+                    style: TextStyle(
+                      color: primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  Obx(() {
+                    if (controller.weeklyLog.isEmpty) return const SizedBox.shrink();
+                    final start = controller.weekStart;
+                    final end = start.add(const Duration(days: 6));
+                    final fmt = DateFormat('d MMM');
+                    return Text(
+                      '${fmt.format(start)} – ${fmt.format(end)}',
+                      style: TextStyle(fontSize: 11, color: muted),
+                    );
+                  }),
+                ],
               ),
             ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: controller.todayLogs.length,
-              separatorBuilder: (_, _) => Divider(
-                height: 1,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : const Color(0xFFF1F5F9),
-              ),
-              itemBuilder: (_, i) {
-                final log = controller.todayLogs[i];
-                final isCheckIn = log.type == 'checkin';
-                final dotColor = isCheckIn
-                    ? const Color(0xFF4ADE80)
-                    : const Color(0xFFF87171);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isCheckIn ? 'Check-in' : 'Check-out',
-                              style: TextStyle(
-                                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${log.timeFormatted} · ${log.distanceFormatted}',
-                              style: TextStyle(
-                                color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isCheckIn
-                              ? const Color(0xFF16A34A).withValues(alpha: 0.12)
-                              : const Color(0xFFDC2626).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          isCheckIn ? 'In' : 'Out',
+            Obx(() {
+              final loading = controller.isWeeklyLogLoading.value;
+              return GestureDetector(
+                onTap: loading ? null : controller.fetchWeeklyLog,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _blue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: loading
+                      ? const SizedBox(
+                          width: 11,
+                          height: 11,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: _blue,
+                          ),
+                        )
+                      : const Text(
+                          'Refresh',
                           style: TextStyle(
-                            color: isCheckIn
-                                ? const Color(0xFF4ADE80)
-                                : const Color(0xFFF87171),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                            color: _blue,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                ),
+              );
+            }),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Table card
+        Obx(() {
+          // Show full-card spinner only on first load (no data yet).
+          // On refresh the button itself shows the loading state.
+          if (controller.isWeeklyLogLoading.value &&
+              controller.weeklyLog.isEmpty) {
+            return Container(
+              height: 120,
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
+              ),
+              child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          }
+
+          final days = controller.weeklyLog;
+
+          return Container(
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor),
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
-                  ),
-                );
-              },
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: days.length,
+                separatorBuilder: (_, _) =>
+                    Divider(height: 1, thickness: 1, color: dividerColor),
+                itemBuilder: (_, i) {
+                  final entry = days[i];
+                  final rec = entry.record;
+                  final isToday = entry.isToday;
+                  final isFuture = entry.isFuture;
+                  final statusColor = _statusColor(rec?.status);
+
+                  final checkIn = rec?.checkInAt != null
+                      ? timeFmt.format(rec!.checkInAt!)
+                      : '—';
+                  final checkOut = rec?.checkOutAt != null
+                      ? timeFmt.format(rec!.checkOutAt!)
+                      : '—';
+                  final hours = rec?.workingHoursLabel;
+                  final statusLabel = rec != null
+                      ? AttendanceRecordModel.labelFor(rec.status).tr
+                      : null;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: isToday
+                          ? Border(left: BorderSide(color: _blue, width: 3))
+                          : null,
+                      color: isToday
+                          ? _blue.withValues(alpha: isDark ? 0.06 : 0.03)
+                          : null,
+                    ),
+                    padding: EdgeInsets.only(
+                      left: isToday ? 11 : 14,
+                      right: 14,
+                      top: 10,
+                      bottom: 10,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Day — single line "MON 23"
+                        SizedBox(
+                          width: 54,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${_dayLabels[i]}  ',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.4,
+                                    color: isToday ? _blue : muted,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: DateFormat('d').format(entry.date),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isToday
+                                        ? _blue
+                                        : isFuture
+                                            ? muted
+                                            : primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Status dot + label
+                        if (!isFuture && statusLabel != null) ...[
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
+                            ),
+                          ),
+                        ] else
+                          Text(
+                            isFuture ? '' : 'No record',
+                            style: TextStyle(fontSize: 11, color: muted),
+                          ),
+
+                        const Spacer(),
+
+                        // Times — 2 lines: "IN → OUT" then "HRS"
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'IN  ',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF16A34A),
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: checkIn,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isFuture ? muted : primary,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '   OUT  ',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFFDC2626),
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: checkOut,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isFuture ? muted : primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (hours != null && hours != '0h 00m') ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                hours,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _blue,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           );
         }),
@@ -780,3 +771,4 @@ class _TodayLogs extends GetView<ScanController> {
     );
   }
 }
+

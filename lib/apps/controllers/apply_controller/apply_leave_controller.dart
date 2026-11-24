@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 
 import '../../models/leave_model.dart';
+import '../time_off_controller/time_off_controller.dart';
 
 class ApplyLeaveController extends GetxController {
   // ── Form state ──
@@ -19,9 +21,17 @@ class ApplyLeaveController extends GetxController {
   final isLoadingBal = false.obs;
 
   // ── Computed ──
+  // Counts Mon–Fri only, matching the server-side diffInWeekdays calculation.
   int get totalDays {
     if (startDate.value == null || endDate.value == null) return 0;
-    return endDate.value!.difference(startDate.value!).inDays + 1;
+    int count = 0;
+    DateTime d = startDate.value!;
+    final end = endDate.value!;
+    while (!d.isAfter(end)) {
+      if (d.weekday <= DateTime.friday) count++;
+      d = d.add(const Duration(days: 1));
+    }
+    return count;
   }
 
   int get remainingForType {
@@ -52,7 +62,7 @@ class ApplyLeaveController extends GetxController {
   Future<void> _fetchBalance() async {
     try {
       isLoadingBal(true);
-      final response = await ApiClient.instance.get('/leave/balance');
+      final response = await ApiClient.instance.get(ApiList.leaveBalance);
       balance(
         LeaveBalance.fromJson(response.data['data'] as Map<String, dynamic>),
       );
@@ -81,8 +91,8 @@ class ApplyLeaveController extends GetxController {
   void pickEndDate(BuildContext context) async {
     if (startDate.value == null) {
       AppToast.failed(
-        'Select start date first',
-        'Please choose the leave start date first.',
+        'select_start_first'.tr,
+        'select_start_first_body'.tr,
       );
       return;
     }
@@ -110,13 +120,16 @@ class ApplyLeaveController extends GetxController {
   Future<void> submit() async {
     if (!(formKey.currentState?.validate() ?? false)) return;
     if (startDate.value == null || endDate.value == null) {
-      AppToast.failed('Missing dates', 'Please select start and end date');
+      AppToast.failed('missing_dates_title'.tr, 'missing_dates_body'.tr);
       return;
     }
     if (!hasEnoughBalance) {
       AppToast.failed(
-        'Insufficient balance',
-        'You only have $remainingForType day(s) left for ${selectedType.value.name} leave',
+        'insufficient_balance_title'.tr,
+        'insufficient_balance_body'.trParams({
+          'days': remainingForType.toString(),
+          'type': selectedType.value.name.tr,
+        }),
       );
       return;
     }
@@ -124,23 +137,30 @@ class ApplyLeaveController extends GetxController {
     try {
       isSubmitting(true);
       await ApiClient.instance.post(
-        '/leave/apply',
+        ApiList.leaveApply,
         data: {
           'type': selectedType.value.name,
           'start_date': startDate.value!.toIso8601String().split('T').first,
           'end_date': endDate.value!.toIso8601String().split('T').first,
-          'total_days': totalDays,
           'reason': reasonCtrl.text.trim(),
         },
       );
 
       Get.back();
       AppToast.pending(
-        'Leave applied',
-        '$totalDays day(s) submitted for approval',
+        'leave_applied_title'.tr,
+        'leave_applied_body'.trParams({'days': totalDays.toString()}),
       );
+
+      // Refresh the time-off list so the new application appears immediately
+      if (Get.isRegistered<TimeOffController>()) {
+        Get.find<TimeOffController>().fetchAll();
+      }
     } catch (e) {
-      AppToast.failed('Submission failed', e.toString());
+      AppToast.failed(
+        'submission_failed'.tr,
+        ApiClient.extractError(e, fallback: 'submission_failed'.tr),
+      );
     } finally {
       isSubmitting(false);
     }

@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -35,17 +36,17 @@ class DocItem {
     title: d.fileName,
     subtitle: d.typeLabel,
     dateLabel: _fmt(d.uploadedAt),
-    statusLabel: d.status.name[0].toUpperCase() + d.status.name.substring(1),
+    statusLabel: d.status.name,
     statusColor: _docStatusColor(d.status),
     typeColor: _docTypeColor(d.type),
-    fileUrl: d.filePath,
+    fileUrl: d.fileUrl,
     isClaim: false,
   );
 
   factory DocItem.fromClaim(ClaimModel c) => DocItem(
     id: c.id,
     title: '${c.typeLabel} Claim · ${c.amountFormatted}',
-    subtitle: c.description,
+    subtitle: c.description!,
     dateLabel: _fmt(c.submittedAt),
     statusLabel: c.statusLabel,
     statusColor: c.statusColor,
@@ -85,12 +86,16 @@ class DocItem {
 
   static int _docTypeColor(DocumentType t) {
     switch (t) {
-      case DocumentType.mc:
-        return 0xFFDC2626;
-      case DocumentType.emergencyLeave:
-        return 0xFFF59E0B;
-      case DocumentType.annualLeave:
+      case DocumentType.ic:
         return 0xFF185FA5;
+      case DocumentType.contract:
+        return 0xFF7C3AED;
+      case DocumentType.cert:
+        return 0xFF0891B2;
+      case DocumentType.medical:
+        return 0xFFDC2626;
+      case DocumentType.passport:
+        return 0xFF059669;
       case DocumentType.other:
         return 0xFF64748B;
     }
@@ -118,7 +123,7 @@ class MyDocumentsController extends GetxController {
     // Filter by status
     if (activeStatus.value != null) {
       list = list
-          .where((d) => d.statusLabel.toLowerCase() == activeStatus.value)
+          .where((d) => d.statusLabel == activeStatus.value)
           .toList();
     }
 
@@ -127,11 +132,11 @@ class MyDocumentsController extends GetxController {
   }
 
   int countPending() =>
-      documents.where((d) => d.statusLabel == 'Pending').length;
+      documents.where((d) => d.statusLabel == 'pending').length;
   int get documentCount => documents.where((d) => !d.isClaim).length;
   int get claimCount => documents.where((d) => d.isClaim).length;
   int get approvedCount =>
-      documents.where((d) => d.statusLabel == 'Approved').length;
+      documents.where((d) => d.statusLabel == 'approved').length;
 
   @override
   void onInit() {
@@ -150,7 +155,7 @@ class MyDocumentsController extends GetxController {
 
   Future<void> _fetchDocuments() async {
     try {
-      final res = await ApiClient.instance.get('/documents');
+      final res = await ApiClient.instance.get(ApiList.documents);
       final docs = (res.data['data'] as List)
           .map(
             (e) => DocItem.fromDocument(
@@ -166,7 +171,7 @@ class MyDocumentsController extends GetxController {
 
   Future<void> _fetchClaims() async {
     try {
-      final res = await ApiClient.instance.get('/claims/my');
+      final res = await ApiClient.instance.get(ApiList.claimsList);
       final claims = (res.data['data'] as List)
           .map(
             (e) => DocItem.fromClaim(

@@ -1,12 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
+import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
+import 'package:staff_attendance/apps/models/attendance_history_model.dart';
 
 import '../scan_controller/scan_controller.dart';
 import '../../routes/routes.dart';
-import '../bottom_nav_controller/bottom_nav_controller.dart';
 
 // ── Announcement item ──────────────────────────────────────────────────────
 class AnnouncementItem {
@@ -91,6 +94,48 @@ class StatusSnapshot {
   });
 }
 
+// ── Weekly log day ─────────────────────────────────────────────────────────
+class WeeklyLogDay {
+  final DateTime date;
+  final AttendanceRecordStatus? status; // null = future or no record
+  final DateTime? checkInAt;
+  final DateTime? checkOutAt;
+  final String workingHoursLabel;
+
+  const WeeklyLogDay({
+    required this.date,
+    required this.status,
+    required this.checkInAt,
+    required this.checkOutAt,
+    required this.workingHoursLabel,
+  });
+
+  bool get isToday {
+    final n = DateTime.now();
+    return date.year == n.year && date.month == n.month && date.day == n.day;
+  }
+
+  bool get isFuture => date.isAfter(DateTime.now());
+  bool get hasRecord => status != null;
+
+  int get statusColorValue {
+    switch (status) {
+      case AttendanceRecordStatus.present:
+        return 0xFF16A34A;
+      case AttendanceRecordStatus.late:
+        return 0xFFF59E0B;
+      case AttendanceRecordStatus.absent:
+        return 0xFFDC2626;
+      case AttendanceRecordStatus.leave:
+        return 0xFF185FA5;
+      case AttendanceRecordStatus.issue:
+        return 0xFF7F77DD;
+      case null:
+        return isFuture ? 0xFF94A3B8 : 0xFFCBD5E1;
+    }
+  }
+}
+
 // ── Controller ─────────────────────────────────────────────────────────────
 class DashboardController extends GetxController {
   // Live clock
@@ -98,10 +143,6 @@ class DashboardController extends GetxController {
   Timer? _clockTimer;
 
   // User info (from storage)
-  bool get isAdmin =>
-      (GetStorage().read<String>('user_role') ?? 'staff').toLowerCase() ==
-      'admin';
-
   String get userName {
     final box = GetStorage();
     final storedName = box.read<String>('user_name')?.trim();
@@ -286,7 +327,91 @@ class DashboardController extends GetxController {
     ),
   ].obs;
 
-  // Scan controller — shared geo / check-in state
+  // ── Notification badge ──────────────────────────────────────────────────
+  final unreadNotifications = 0.obs;
+
+  Future<void> fetchNotificationCount() async {
+    try {
+      final response = await ApiClient.instance.get(ApiList.dashboardBadges);
+      final data = response.data['data'] as Map<String, dynamic>? ?? {};
+      unreadNotifications(data['unread_notifications'] as int? ?? 0);
+    } catch (_) {
+      // non-blocking — badge just won't show
+    }
+  }
+
+  // ── Weekly log ──────────────────────────────────────────────────────────
+  final weeklyLog = <WeeklyLogDay>[].obs;
+  final isWeeklyLogLoading = false.obs;
+
+  DateTime get weekStart {
+    final today = DateTime.now();
+    return DateTime(today.year, today.month, today.day - (today.weekday - 1));
+  }
+
+  String get weekRangeLabel {
+    final start = weekStart;
+    final end = start.add(const Duration(days: 6));
+    final fmt = DateFormat('d MMM');
+    return '${fmt.format(start)} – ${fmt.format(end)}';
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Future<void> fetchWeeklyLog() async {
+    try {
+      isWeeklyLogLoading(true);
+      final today = DateTime.now();
+      final response = await ApiClient.instance.get(
+        ApiList.attendanceHistory,
+        queryParameters: {'month': today.month, 'year': today.year},
+      );
+      final records = (response.data['data'] as List? ?? const [])
+          .map((item) =>
+              AttendanceRecordModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+
+      final start = weekStart;
+      final days = List.generate(7, (i) {
+        final date = start.add(Duration(days: i));
+        AttendanceRecordModel? rec;
+        for (final r in records) {
+          if (_sameDay(r.date, date)) {
+            rec = r;
+            break;
+          }
+        }
+        return WeeklyLogDay(
+          date: date,
+          status: rec?.status,
+          checkInAt: rec?.checkInAt,
+          checkOutAt: rec?.checkOutAt,
+          workingHoursLabel: rec?.workingHoursLabel ?? '—',
+        );
+      });
+      weeklyLog.assignAll(days);
+    } catch (e) {
+      debugPrint('WEEKLY_LOG error: $e');
+      final start = weekStart;
+      weeklyLog.assignAll(
+        List.generate(
+          7,
+          (i) => WeeklyLogDay(
+            date: start.add(Duration(days: i)),
+            status: null,
+            checkInAt: null,
+            checkOutAt: null,
+            workingHoursLabel: '—',
+          ),
+        ),
+      );
+    } finally {
+      isWeeklyLogLoading(false);
+    }
+  }
+
+  // ── Scan controller — shared geo / check-in state ────────────────────────
   ScanController get scanController {
     if (!Get.isRegistered<ScanController>()) Get.put(ScanController());
     return Get.find<ScanController>();
@@ -340,17 +465,11 @@ class DashboardController extends GetxController {
   }
 
   void onCheckInTap() {
-    // If BottomNavController is registered, set its index so the tab switches immediately.
-    if (Get.isRegistered<BottomNavController>()) {
-      try {
-        Get.find<BottomNavController>().setIndex(1);
-      } catch (_) {}
-    }
+    scanController.checkIn();
+  }
 
-    // Ensure app shell is visible: navigate to app route with tabIndex arg if not already there
-    if (Get.currentRoute != Routes.app) {
-      Get.offNamed(Routes.app, arguments: {'tabIndex': 1});
-    }
+  void confirmCheckOut() {
+    scanController.checkOut();
   }
 
   void openRoute(String route) => Get.toNamed(route);
@@ -365,6 +484,8 @@ class DashboardController extends GetxController {
       const Duration(seconds: 1),
       (_) => now(DateTime.now()),
     );
+    fetchWeeklyLog();
+    fetchNotificationCount();
   }
 
   @override

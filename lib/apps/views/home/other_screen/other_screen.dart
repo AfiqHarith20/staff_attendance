@@ -13,12 +13,11 @@ class OtherBinding extends Bindings {
 class OtherScreen extends GetView<OtherController> {
   const OtherScreen({super.key});
 
-  static const _categories = [
+  static const _baseCategories = [
     'All',
     'Attendance',
     'Requests',
     'Documents',
-    'Manager',
     'Company',
   ];
 
@@ -29,8 +28,6 @@ class OtherScreen extends GetView<OtherController> {
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-
-    final sections = _buildSections(isDark);
 
     return Scaffold(
       backgroundColor: bg,
@@ -48,7 +45,7 @@ class OtherScreen extends GetView<OtherController> {
                     children: [
                       Expanded(
                         child: Text(
-                          'More',
+                          'more'.tr,
                           style: TextStyle(
                             color: isDark
                                 ? Colors.white
@@ -58,14 +55,58 @@ class OtherScreen extends GetView<OtherController> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Notifications',
-                        onPressed: () => Get.toNamed(Routes.notifications),
-                        icon: const Icon(Icons.notifications_active_rounded),
-                      ),
+                      Obx(() {
+                        final count = controller.unreadNotifications.value;
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            IconButton(
+                              tooltip: 'Notifications',
+                              onPressed: () => Get.toNamed(Routes.notifications),
+                              icon: const Icon(Icons.notifications_active_rounded),
+                            ),
+                            if (count > 0)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 16,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDC2626),
+                                      borderRadius: BorderRadius.circular(99),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? const Color(0xFF0F172A)
+                                            : Colors.white,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      count > 99 ? '99+' : '$count',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.6,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      }),
                     ],
                   ),
                 ),
+                _QuickActions(isDark: isDark),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: AppSearchField(
@@ -74,16 +115,25 @@ class OtherScreen extends GetView<OtherController> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Obx(
-                  () => AppChoiceChips(
-                    values: _categories,
+                Obx(() {
+                  final hasManager = controller.permissions.isNotEmpty;
+                  final categories = hasManager
+                      ? [..._baseCategories.take(4), 'Manager', _baseCategories.last]
+                      : _baseCategories;
+                  if (!hasManager &&
+                      controller.selectedCategory.value == 'Manager') {
+                    controller.setCategory('All');
+                  }
+                  return AppChoiceChips(
+                    values: categories,
                     selected: controller.selectedCategory.value,
                     onChanged: controller.setCategory,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                ),
+                  );
+                }),
                 const SizedBox(height: 14),
                 Obx(() {
+                  final sections = _buildSections(isDark);
                   final visible = _filterSections(sections);
                   if (visible.isEmpty) {
                     return _EmptyState(isDark: isDark);
@@ -131,7 +181,61 @@ class OtherScreen extends GetView<OtherController> {
   }
 
   List<_MenuSection> _buildSections(bool isDark) {
+    final privilegedItems = <_MenuItem>[
+      if (controller.hasPermission('team_attendance'))
+        _MenuItem(
+          icon: Icons.groups_rounded,
+          iconBg: _greenBg(isDark),
+          iconColor: const Color(0xFF16A34A),
+          title: 'Team Attendance',
+          subtitle: 'Present, late, leave and absent today',
+          route: Routes.teamAttendance,
+        ),
+      if (controller.hasPermission('approval_inbox'))
+        _MenuItem(
+          icon: Icons.approval_rounded,
+          iconBg: _amberBg(isDark),
+          iconColor: const Color(0xFFF59E0B),
+          title: 'Approval Inbox',
+          subtitle: 'Approve requests and documents',
+          route: Routes.approvalInbox,
+        ),
+      if (controller.hasPermission('qr_generate'))
+        _MenuItem(
+          icon: Icons.qr_code_2_rounded,
+          iconBg: _violetBg(isDark),
+          iconColor: const Color(0xFF7F77DD),
+          title: 'Check-in QR Code',
+          subtitle: 'Rotate and display the entrance QR token',
+          route: Routes.qrGenerate,
+        ),
+      if (controller.hasPermission('reports'))
+        _MenuItem(
+          icon: Icons.bar_chart_rounded,
+          iconBg: _blueBg(isDark),
+          iconColor: const Color(0xFF185FA5),
+          title: 'Reports',
+          subtitle: 'Attendance and workforce reports',
+          route: Routes.adminReports,
+        ),
+      if (controller.hasPermission('team_leave'))
+        _MenuItem(
+          icon: Icons.event_note_rounded,
+          iconBg: _greenBg(isDark),
+          iconColor: const Color(0xFF16A34A),
+          title: 'Team Leave',
+          subtitle: "View your team's leave calendar",
+          route: Routes.teamLeave,
+        ),
+    ];
+
     return [
+      if (privilegedItems.isNotEmpty)
+        _MenuSection(
+          title: 'Manager Tools',
+          category: 'Manager',
+          items: privilegedItems,
+        ),
       _MenuSection(
         title: 'Attendance',
         category: 'Attendance',
@@ -215,9 +319,9 @@ class OtherScreen extends GetView<OtherController> {
             subtitle: 'Approved and pending leave',
             route: Routes.timeOff,
             badgeBuilder: (c) => Obx(
-              () => c.pendingLeave.value > 0
+              () => c.pendingRequests.value > 0
                   ? _Badge(
-                      label: '${c.pendingLeave.value} pending',
+                      label: '${c.pendingRequests.value} pending',
                       bg: const Color(0xFFFAEEDA),
                       text: const Color(0xFF854F0B),
                     )
@@ -246,7 +350,7 @@ class OtherScreen extends GetView<OtherController> {
             iconColor: const Color(0xFFF59E0B),
             title: 'Apply Overtime',
             subtitle: 'Request OT approval',
-            route: Routes.applyOvertime,
+            route: Routes.overtime,
           ),
           _MenuItem(
             icon: Icons.home_work_rounded,
@@ -260,9 +364,9 @@ class OtherScreen extends GetView<OtherController> {
             icon: Icons.receipt_long_rounded,
             iconBg: _greenBg(isDark),
             iconColor: const Color(0xFF16A34A),
-            title: 'Submit Claim',
-            subtitle: 'Medical, transport or other claims',
-            route: Routes.submitClaim,
+            title: 'Claims',
+            subtitle: 'Medical, transport, mileage and travel claims',
+            route: Routes.claims,
           ),
         ],
       ),
@@ -323,28 +427,6 @@ class OtherScreen extends GetView<OtherController> {
         ],
       ),
       _MenuSection(
-        title: 'Manager',
-        category: 'Manager',
-        items: [
-          _MenuItem(
-            icon: Icons.groups_rounded,
-            iconBg: _greenBg(isDark),
-            iconColor: const Color(0xFF16A34A),
-            title: 'Team Attendance',
-            subtitle: 'Present, late, leave and absent today',
-            route: Routes.teamAttendance,
-          ),
-          _MenuItem(
-            icon: Icons.approval_rounded,
-            iconBg: _amberBg(isDark),
-            iconColor: const Color(0xFFF59E0B),
-            title: 'Approval Inbox',
-            subtitle: 'Approve requests and documents',
-            route: Routes.approvalInbox,
-          ),
-        ],
-      ),
-      _MenuSection(
         title: 'Company & Support',
         category: 'Company',
         items: [
@@ -374,12 +456,84 @@ class OtherScreen extends GetView<OtherController> {
             ),
           ),
           _MenuItem(
+            icon: Icons.card_giftcard_rounded,
+            iconBg: _greenBg(isDark),
+            iconColor: const Color(0xFF16A34A),
+            title: 'Benefits',
+            subtitle: 'Leave, medical, insurance and perks',
+            route: Routes.benefits,
+          ),
+          _MenuItem(
+            icon: Icons.work_history_rounded,
+            iconBg: _violetBg(isDark),
+            iconColor: const Color(0xFF7F77DD),
+            title: 'Employment History',
+            subtitle: 'Position, department and tenure records',
+            route: Routes.employmentHistory,
+          ),
+          _MenuItem(
+            icon: Icons.inventory_2_rounded,
+            iconBg: _blueBg(isDark),
+            iconColor: const Color(0xFF185FA5),
+            title: 'My Assets',
+            subtitle: 'Company equipment assigned to you',
+            route: Routes.myAssets,
+          ),
+          _MenuItem(
+            icon: Icons.school_rounded,
+            iconBg: _greenBg(isDark),
+            iconColor: const Color(0xFF16A34A),
+            title: 'Training Records',
+            subtitle: 'CPD, certifications and courses',
+            route: Routes.trainingRecords,
+          ),
+          _MenuItem(
+            icon: Icons.swap_horiz_rounded,
+            iconBg: _amberBg(isDark),
+            iconColor: const Color(0xFFD97706),
+            title: 'Shift Swap',
+            subtitle: 'Request a shift swap with a colleague',
+            route: Routes.shiftSwap,
+          ),
+          _MenuItem(
+            icon: Icons.insert_chart_rounded,
+            iconBg: _violetBg(isDark),
+            iconColor: const Color(0xFF7F77DD),
+            title: 'Performance',
+            subtitle: 'Reviews, goals and self-assessment',
+            route: Routes.performance,
+          ),
+          _MenuItem(
+            icon: Icons.work_outline_rounded,
+            iconBg: _blueBg(isDark),
+            iconColor: const Color(0xFF185FA5),
+            title: 'Job Board',
+            subtitle: 'Internal open positions',
+            route: Routes.jobBoard,
+          ),
+          _MenuItem(
+            icon: Icons.edit_document,
+            iconBg: _greenBg(isDark),
+            iconColor: const Color(0xFF16A34A),
+            title: 'Signature Requests',
+            subtitle: 'Documents requiring your signature',
+            route: Routes.signatureRequests,
+          ),
+          _MenuItem(
             icon: Icons.account_tree_rounded,
             iconBg: _violetBg(isDark),
             iconColor: const Color(0xFF7F77DD),
             title: 'Organisation',
             subtitle: 'Team structure and contacts',
             route: Routes.organisation,
+          ),
+          _MenuItem(
+            icon: Icons.contacts_rounded,
+            iconBg: _blueBg(isDark),
+            iconColor: const Color(0xFF185FA5),
+            title: 'Employee Directory',
+            subtitle: 'Find a colleague by name or department',
+            route: Routes.employeeDirectory,
           ),
           _MenuItem(
             icon: Icons.menu_book_rounded,
@@ -641,6 +795,157 @@ class _EmptyState extends StatelessWidget {
         style: TextStyle(
           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Quick Actions row ───────────────────────────────────────────────────────
+
+class _QuickActions extends GetView<OtherController> {
+  final bool isDark;
+  const _QuickActions({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Obx(() {
+        final pendingLeave = controller.pendingRequests.value;
+        final slipReady = controller.payslipReady.value;
+        final slipMonth = controller.payslipMonth.value;
+        return Row(
+          children: [
+            _QuickTile(
+              isDark: isDark,
+              icon: Icons.event_available_rounded,
+              label: 'Time Off',
+              route: Routes.timeOff,
+              badgeLabel: pendingLeave > 0 ? '$pendingLeave' : null,
+              badgeBg: const Color(0xFFFAEEDA),
+              badgeText: const Color(0xFF854F0B),
+            ),
+            const SizedBox(width: 10),
+            _QuickTile(
+              isDark: isDark,
+              icon: Icons.download_rounded,
+              label: 'Pay Slip',
+              route: Routes.paySlip,
+              badgeLabel: slipReady ? slipMonth.isNotEmpty ? slipMonth : 'New' : null,
+              badgeBg: const Color(0xFFEAF3DE),
+              badgeText: const Color(0xFF3B6D11),
+            ),
+            const SizedBox(width: 10),
+            _QuickTile(
+              isDark: isDark,
+              icon: Icons.receipt_long_rounded,
+              label: 'Claims',
+              route: Routes.claims,
+            ),
+            const SizedBox(width: 10),
+            _QuickTile(
+              isDark: isDark,
+              icon: Icons.edit_calendar_rounded,
+              label: 'Correction',
+              route: Routes.correctionRequest,
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+class _QuickTile extends StatelessWidget {
+  final bool isDark;
+  final IconData icon;
+  final String label;
+  final String route;
+  final String? badgeLabel;
+  final Color badgeBg;
+  final Color badgeText;
+
+  const _QuickTile({
+    required this.isDark,
+    required this.icon,
+    required this.label,
+    required this.route,
+    this.badgeLabel,
+    this.badgeBg = const Color(0xFFFAEEDA),
+    this.badgeText = const Color(0xFF854F0B),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final borderColor =
+        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => Get.toNamed(route),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: const Color(0xFF185FA5), size: 22),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFF334155),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (badgeLabel != null)
+              Positioned(
+                top: -5,
+                right: -5,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF0F172A)
+                          : Colors.white,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    badgeLabel!,
+                    style: TextStyle(
+                      color: badgeText,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

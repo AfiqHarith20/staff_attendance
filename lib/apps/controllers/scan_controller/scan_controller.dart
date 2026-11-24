@@ -1,27 +1,54 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 
+import '../../models/attendance_history_model.dart';
 import '../../models/document_model.dart';
+import '../team_attendance_controller/team_attendance_controller.dart';
 
 // ── Check-in status states ──
 enum CheckInStatus {
   idle,
   locating,
-  inRange,
-  outOfRange,
+  ready, // GPS fix obtained — ready to check in/out
   success,
   alreadyIn,
   error,
+  inRange,
+}
+
+// ── Weekly log day entry ──
+class WeekDayEntry {
+  final DateTime date;
+  final AttendanceRecordModel? record;
+
+  const WeekDayEntry({required this.date, this.record});
+
+  bool get isToday {
+    final n = DateTime.now();
+    return date.year == n.year && date.month == n.month && date.day == n.day;
+  }
+
+  bool get isFuture {
+    final n = DateTime.now();
+    return DateTime(date.year, date.month, date.day)
+        .isAfter(DateTime(n.year, n.month, n.day));
+  }
+
+  bool get hasRecord => record != null;
 }
 
 // ── Today log entry ──
@@ -40,7 +67,7 @@ class AttendanceLog {
 
   factory AttendanceLog.fromJson(Map<String, dynamic> j) => AttendanceLog(
     type: j['type'] as String,
-    time: DateTime.parse(j['timestamp'] as String),
+    time: DateTime.parse(j['timestamp'] as String).toLocal(),
     distanceM: (j['distance_m'] as num).toDouble(),
     inRange: j['in_range'] as bool,
   );
@@ -51,6 +78,8 @@ class AttendanceLog {
 }
 
 class ScanController extends GetxController {
+  final _geocoding = Geocoding();
+
   // ── Office config (normally fetched from API/storage) ──
   static const double _officeLat =
       2.9274494639052575; // 🔧 replace with your office lat
@@ -69,59 +98,61 @@ class ScanController extends GetxController {
   final locationError = ''.obs;
   final isCheckingIn = false.obs;
   final checkInMessage = ''.obs;
-  // Whether geofencing is required for check-in. If false, users may check in from any location; location is still recorded.
-  final geofenceEnabled = false.obs;
 
   // ── Today check-in flag ──
   final checkedInToday = false.obs;
 
   // If true, operate in mock mode (no API calls) — useful for local testing
-  final mockMode = true.obs;
+  final mockMode = false.obs;
 
   // ── Today logs ──
   final todayLogs = <AttendanceLog>[].obs;
   final isLoadingLogs = false.obs;
+
+  // ── Weekly log ──
+  final weeklyLog = <WeekDayEntry>[].obs;
+  final isWeeklyLogLoading = false.obs;
 
   // ── Documents ──
   final documents = <DocumentModel>[].obs;
   final isLoadingDocs = false.obs;
   final isUploading = false.obs;
   final uploadError = ''.obs;
-  final selectedType = DocumentType.mc.obs;
+  final selectedType = DocumentType.medical.obs;
+
+  // ── Resolved address from reverse geocoding ──
+  final locationName = Rxn<String>();
 
   // ── Live location stream ──
   StreamSubscription<Position>? _locationStream;
 
-  bool get isAdmin => GetStorage().read<String>('user_role') == 'admin';
-
-  /// Returns whether the user is considered "in range" for check-in.
-  /// If geofencing is disabled (`geofenceEnabled == false`) this returns true
-  /// so users can check in from any location. The actual distance is still
-  /// recorded and sent to the server.
+  /// True when GPS has a fix and check-in/out can proceed.
   bool get isInRange =>
-      (!geofenceEnabled.value) ||
-      checkInStatus.value == CheckInStatus.inRange ||
-      checkInStatus.value == CheckInStatus.success;
+      checkInStatus.value == CheckInStatus.ready ||
+      checkInStatus.value == CheckInStatus.success ||
+      checkInStatus.value == CheckInStatus.alreadyIn;
 
-  /// Toggle geofence requirement and persist setting.
-  void setGeofenceEnabled(bool v) {
-    geofenceEnabled(v);
-    try {
-      GetStorage().write('geofence_enabled', v);
-    } catch (_) {}
+  DateTime get weekStart {
+    final today = DateTime.now();
+    return DateTime(today.year, today.month, today.day - (today.weekday - 1));
   }
 
-  double get officeLat => _officeLat;
-  double get officeLng => _officeLng;
-  double get radiusM => _radiusM;
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Refreshes TeamAttendanceController if it is already registered (i.e. the
+  /// team screen has been opened this session). This keeps the team list in
+  /// sync whenever anyone — staff or admin/HR — checks in or out.
+  void _refreshTeamIfActive() {
+    if (Get.isRegistered<TeamAttendanceController>()) {
+      Get.find<TeamAttendanceController>().fetchTeam();
+    }
+  }
 
   @override
   void onInit() {
     super.onInit();
-    // Load geofence preference (persisted)
     try {
-      final stored = GetStorage().read<bool>('geofence_enabled');
-      if (stored != null) geofenceEnabled(stored);
       final mockStored = GetStorage().read<bool>('mock_mode');
       if (mockStored != null) mockMode(mockStored);
     } catch (_) {}
@@ -129,6 +160,7 @@ class ScanController extends GetxController {
     _startLocationTracking();
     fetchDocuments();
     fetchTodayLogs();
+    fetchWeeklyLog();
   }
 
   void setMockMode(bool v) {
@@ -142,6 +174,9 @@ class ScanController extends GetxController {
   // LOCATION
   // ─────────────────────────────────────
   Future<void> _startLocationTracking() async {
+    // Cancel any existing subscription before starting a new one (BUG-06: stream leak on retry).
+    await _locationStream?.cancel();
+    _locationStream = null;
     checkInStatus(CheckInStatus.locating);
     locationError('');
 
@@ -210,12 +245,28 @@ class ScanController extends GetxController {
     );
     distanceM(dist);
 
-    // Only update status if not in success/alreadyIn state
+    // Mark GPS as ready (unless a terminal state like success/alreadyIn is set)
     if (checkInStatus.value != CheckInStatus.success &&
         checkInStatus.value != CheckInStatus.alreadyIn) {
-      checkInStatus(
-        dist <= _radiusM ? CheckInStatus.inRange : CheckInStatus.outOfRange,
-      );
+      checkInStatus(CheckInStatus.ready);
+    }
+
+    _resolveLocationName(pos.latitude, pos.longitude);
+  }
+
+  Future<void> _resolveLocationName(double lat, double lng) async {
+    try {
+      final placemarks = await _geocoding.placemarkFromCoordinates(lat, lng);
+      if (placemarks.isEmpty) return;
+      final p = placemarks.first;
+      final parts = <String>[
+        if ((p.street ?? '').isNotEmpty) p.street!,
+        if ((p.subLocality ?? '').isNotEmpty) p.subLocality!,
+        if ((p.locality ?? '').isNotEmpty) p.locality!,
+      ];
+      if (parts.isNotEmpty) locationName(parts.join(', '));
+    } catch (_) {
+      // Non-fatal — server will fall back to office name
     }
   }
 
@@ -245,14 +296,28 @@ class ScanController extends GetxController {
   // ─────────────────────────────────────
   // CHECK-IN
   // ─────────────────────────────────────
-  Future<void> checkIn() async {
-    if (isCheckingIn.value) return;
-    // If geofence is enabled, require being in range to proceed.
-    if (geofenceEnabled.value &&
-        !(checkInStatus.value == CheckInStatus.inRange ||
-            checkInStatus.value == CheckInStatus.success)) {
-      return;
+  /// Gets a fresh GPS fix at the moment of check-in/out.
+  /// Falls back to the last known stream value if GPS times out.
+  Future<({double lat, double lng})> _getFreshPosition() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      _updatePosition(pos);
+      return (lat: pos.latitude, lng: pos.longitude);
+    } catch (_) {
+      return (lat: currentLat.value, lng: currentLng.value);
     }
+  }
+
+  Future<void> checkIn() async {
+    debugPrint(
+      'CHECKIN: called | isCheckingIn=${isCheckingIn.value} | status=${checkInStatus.value} | lat=${currentLat.value} | lng=${currentLng.value}',
+    );
+    if (isCheckingIn.value) return;
 
     try {
       isCheckingIn(true);
@@ -262,7 +327,7 @@ class ScanController extends GetxController {
         // Simulate successful check-in
         final today = DateTime.now();
         GetStorage().write(
-          'last_checkin_date',
+          _checkinKey,
           '${today.year}-${today.month}-${today.day}',
         );
         checkedInToday(true);
@@ -278,6 +343,8 @@ class ScanController extends GetxController {
             inRange: actualInRange,
           ),
         );
+        fetchWeeklyLog();
+        _refreshTeamIfActive();
         AppToast.success(
           'Check-in (mock)',
           '${distanceM.value.toStringAsFixed(0)}m dari pejabat',
@@ -285,12 +352,17 @@ class ScanController extends GetxController {
         return;
       }
 
+      // Capture device time and fresh GPS before the network call.
+      final checkedAt = DateTime.now().toIso8601String();
+      final pos = await _getFreshPosition();
+
       final response = await ApiClient.instance.post(
-        '/attendance/checkin',
+        ApiList.checkIn,
         data: {
-          'latitude': currentLat.value,
-          'longitude': currentLng.value,
-          'distance_m': distanceM.value.toStringAsFixed(2),
+          'latitude': pos.lat,
+          'longitude': pos.lng,
+          'checked_at': checkedAt,
+          if (locationName.value != null) 'location_name': locationName.value,
         },
       );
 
@@ -298,26 +370,39 @@ class ScanController extends GetxController {
       final respMsg = response.data is Map
           ? response.data['message'] as String?
           : null;
-      final today = DateTime.now();
+      final now = DateTime.now();
       GetStorage().write(
-        'last_checkin_date',
-        '${today.year}-${today.month}-${today.day}',
+        _checkinKey,
+        '${now.year}-${now.month}-${now.day}',
       );
       checkedInToday(true);
       checkInStatus(CheckInStatus.success);
       checkInMessage(respMsg ?? 'Check-in successful');
-      final actualInRange = distanceM.value <= _radiusM;
+      final actualInRange = pos.lat != 0 && pos.lng != 0
+          ? _haversineDistance(pos.lat, pos.lng, _officeLat, _officeLng) <=
+                _radiusM
+          : distanceM.value <= _radiusM;
       todayLogs.insert(
         0,
         AttendanceLog(
           type: 'checkin',
-          time: DateTime.now(),
-          distanceM: distanceM.value,
+          time: now,
+          distanceM: _haversineDistance(
+            pos.lat,
+            pos.lng,
+            _officeLat,
+            _officeLng,
+          ),
           inRange: actualInRange,
         ),
       );
+      fetchWeeklyLog();
+      _refreshTeamIfActive();
       AppToast.success('Check-in', respMsg ?? 'Checked in');
     } on DioException catch (e) {
+      debugPrint(
+        'CHECKIN DioException: ${e.type} | ${e.message} | ${e.response?.statusCode} | ${e.response?.data}',
+      );
       final errMsg = e.response?.data != null
           ? e.response?.data['message'] as String?
           : null;
@@ -326,11 +411,12 @@ class ScanController extends GetxController {
         checkInStatus(CheckInStatus.alreadyIn);
         checkInMessage(errMsg);
       } else {
-        checkInStatus(CheckInStatus.inRange);
+        checkInStatus(CheckInStatus.ready);
         AppToast.failed('Check-in failed', errMsg ?? 'Please try again');
       }
-    } catch (_) {
-      checkInStatus(CheckInStatus.inRange);
+    } catch (e, st) {
+      debugPrint('CHECKIN error: $e\n$st');
+      checkInStatus(CheckInStatus.ready);
       AppToast.failed('Error', 'Unexpected error. Please try again.');
     } finally {
       isCheckingIn(false);
@@ -356,7 +442,7 @@ class ScanController extends GetxController {
       isCheckingIn(true);
       if (mockMode.value) {
         // simulate checkout locally
-        GetStorage().remove('last_checkin_date');
+        GetStorage().remove(_checkinKey);
         checkedInToday(false);
         checkInStatus(CheckInStatus.idle);
         final actualInRange = distanceM.value <= _radiusM;
@@ -369,16 +455,23 @@ class ScanController extends GetxController {
             inRange: actualInRange,
           ),
         );
+        fetchWeeklyLog();
+        _refreshTeamIfActive();
         AppToast.success('Check-out (mock)', 'Checked out (mock)');
         return;
       }
 
+      // Capture device time and fresh GPS before the network call.
+      final checkedAt = DateTime.now().toIso8601String();
+      final pos = await _getFreshPosition();
+
       final response = await ApiClient.instance.post(
-        '/attendance/checkout',
+        ApiList.checkOut,
         data: {
-          'latitude': currentLat.value,
-          'longitude': currentLng.value,
-          'distance_m': distanceM.value.toStringAsFixed(2),
+          'latitude': pos.lat,
+          'longitude': pos.lng,
+          'checked_at': checkedAt,
+          if (locationName.value != null) 'location_name': locationName.value,
         },
       );
 
@@ -386,7 +479,7 @@ class ScanController extends GetxController {
           ? response.data['message'] as String?
           : null;
       // mark checkout locally
-      GetStorage().remove('last_checkin_date');
+      GetStorage().remove(_checkinKey);
       checkedInToday(false);
       checkInStatus(CheckInStatus.idle);
       final actualInRange = distanceM.value <= _radiusM;
@@ -399,9 +492,11 @@ class ScanController extends GetxController {
           inRange: actualInRange,
         ),
       );
+      fetchWeeklyLog();
+      _refreshTeamIfActive();
       AppToast.success('Check-out', respMsg ?? 'Checked out');
     } on DioException catch (e) {
-      final msg = e.response?.data['message'] as String?;
+      final msg = e.response?.data?['message'] as String?;
       AppToast.failed('Check-out failed', msg ?? 'Please try again');
     } catch (_) {
       AppToast.failed('Error', 'Unexpected error. Please try again.');
@@ -416,15 +511,70 @@ class ScanController extends GetxController {
   Future<void> fetchTodayLogs() async {
     try {
       isLoadingLogs(true);
-      final response = await ApiClient.instance.get('/attendance/today');
+      final response = await ApiClient.instance.get(ApiList.attendanceToday);
+      debugPrint(
+        'TODAY LOGS response: ${response.statusCode} | ${response.data}',
+      );
       final list = response.data['data'] as List? ?? [];
       todayLogs.assignAll(
         list.map((e) => AttendanceLog.fromJson(e as Map<String, dynamic>)),
       );
-    } catch (_) {
-      // silently fail — show empty state
+      _reconcileCheckedInState();
+    } catch (e) {
+      debugPrint('TODAY LOGS error: $e');
     } finally {
       isLoadingLogs(false);
+    }
+  }
+
+  // ─────────────────────────────────────
+  // WEEKLY LOG
+  // ─────────────────────────────────────
+  Future<void> fetchWeeklyLog() async {
+    try {
+      isWeeklyLogLoading(true);
+      final start = weekStart;
+      final end = start.add(const Duration(days: 6));
+
+      // BUG-08: week can span two months (e.g. Mon 27 Oct – Sun 2 Nov).
+      // Always fetch the month containing the end of the week; also fetch the
+      // start month when the week crosses a boundary so no days are blank.
+      Future<List<AttendanceRecordModel>> fetchMonth(int month, int year) async {
+        final res = await ApiClient.instance.get(
+          ApiList.attendanceHistory,
+          queryParameters: {'month': month, 'year': year},
+        );
+        return (res.data['data'] as List? ?? const [])
+            .map((item) =>
+                AttendanceRecordModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+
+      final records = await fetchMonth(end.month, end.year);
+      if (start.month != end.month || start.year != end.year) {
+        records.addAll(await fetchMonth(start.month, start.year));
+      }
+
+      final days = List.generate(7, (i) {
+        final date = start.add(Duration(days: i));
+        AttendanceRecordModel? rec;
+        for (final r in records) {
+          if (_sameDay(r.date, date)) {
+            rec = r;
+            break;
+          }
+        }
+        return WeekDayEntry(date: date, record: rec);
+      });
+      weeklyLog.assignAll(days);
+    } catch (e) {
+      debugPrint('WEEKLY_LOG error: $e');
+      final start = weekStart;
+      weeklyLog.assignAll(
+        List.generate(7, (i) => WeekDayEntry(date: start.add(Duration(days: i)))),
+      );
+    } finally {
+      isWeeklyLogLoading(false);
     }
   }
 
@@ -434,9 +584,9 @@ class ScanController extends GetxController {
   Future<void> fetchDocuments() async {
     try {
       isLoadingDocs(true);
-      final response = await ApiClient.instance.get('/documents');
+      final response = await ApiClient.instance.get(ApiList.documents);
       documents.assignAll(
-        (response.data['data'] as List).map(
+        (response.data['data'] as List? ?? const []).map(
           (e) => DocumentModel.fromJson(e as Map<String, dynamic>),
         ),
       );
@@ -449,23 +599,19 @@ class ScanController extends GetxController {
   Future<void> pickAndUpload() async {
     uploadError('');
 
-    final status = await Permission.storage.request();
+    final status = await Permission.photos.request();
     if (status.isPermanentlyDenied) {
       openAppSettings();
       return;
     }
 
-    final result = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-      allowMultiple: false,
     );
-    if (result == null || result.files.isEmpty) return;
+    if (picked == null || picked.path == null) return;
 
-    final picked = result.files.first;
-    if (picked.path == null) return;
-
-    if (picked.size > 5 * 1024 * 1024) {
+    if ((picked.lengthSync() ?? 0) > 5 * 1024 * 1024) {
       uploadError('File too large. Maximum 5 MB.');
       return;
     }
@@ -481,7 +627,7 @@ class ScanController extends GetxController {
       });
 
       final response = await ApiClient.instance.post(
-        '/documents/upload',
+        ApiList.documentsUpload,
         data: formData,
         options: Options(
           headers: {'Content-Type': 'multipart/form-data'},
@@ -510,8 +656,15 @@ class ScanController extends GetxController {
   // ─────────────────────────────────────
   // HELPERS
   // ─────────────────────────────────────
+
+  // Scoped storage key so check-in state never leaks between users.
+  String get _checkinKey {
+    final uid = GetStorage().read<String>('user_email') ?? 'default';
+    return 'last_checkin_date_$uid';
+  }
+
   void _checkTodayStatus() {
-    final lastIn = GetStorage().read<String>('last_checkin_date');
+    final lastIn = GetStorage().read<String>(_checkinKey);
     final today = DateTime.now();
     final todayStr = '${today.year}-${today.month}-${today.day}';
     if (lastIn == todayStr) {
@@ -521,15 +674,33 @@ class ScanController extends GetxController {
     }
   }
 
+  // After today's logs load, reconcile checkedInToday with actual API data.
+  // This overrides the storage-based optimistic value and fixes cross-user pollution.
+  void _reconcileCheckedInState() {
+    final hasCheckIn = todayLogs.any((l) => l.type == 'checkin');
+    final hasCheckOut = todayLogs.any((l) => l.type == 'checkout');
+    if (!hasCheckIn) {
+      // No check-in record from server — clear any stale local flag.
+      checkedInToday(false);
+      if (checkInStatus.value == CheckInStatus.alreadyIn) {
+        checkInStatus(CheckInStatus.idle);
+      }
+      GetStorage().remove(_checkinKey);
+    } else if (hasCheckOut) {
+      // Day is complete — both check-in and check-out exist.
+      checkedInToday(false);
+      GetStorage().remove(_checkinKey);
+    } else {
+      // Checked in but not yet checked out — currently active.
+      checkedInToday(true);
+      checkInStatus(CheckInStatus.alreadyIn);
+    }
+  }
+
   String get distanceLabel {
     final d = distanceM.value;
     if (d < 1) return '<1m from office';
     return '${d.toStringAsFixed(0)}m from office';
-  }
-
-  String get remainingLabel {
-    if (isInRange) return distanceLabel;
-    return '${(distanceM.value - _radiusM).toStringAsFixed(0)}m too far';
   }
 
   @override

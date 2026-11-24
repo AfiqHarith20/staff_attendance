@@ -1,9 +1,13 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get/get.dart';
 import 'package:staff_attendance/api/api_client.dart';
+import 'package:staff_attendance/apps/routes/api_routes.dart';
 import 'package:staff_attendance/widgets/app_toast.dart';
 
 class TeamAttendanceController extends GetxController {
   final isLoading = false.obs;
+  final errorMessage = Rxn<String>();
   final selectedStatus = 'All'.obs;
   final selectedDepartment = 'All'.obs;
   final filtersExpanded = false.obs;
@@ -68,12 +72,23 @@ class TeamAttendanceController extends GetxController {
   Future<void> fetchTeam() async {
     try {
       isLoading(true);
-      final response = await ApiClient.instance.get('/team-attendance');
+      errorMessage(null);
+      final response = await ApiClient.instance.get(ApiList.teamAttendance);
       members.assignAll(
         (response.data['data'] as List? ?? const [])
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList(),
       );
+    } on DioException catch (e) {
+      debugPrint('TEAM_ATTENDANCE error: $e');
+      errorMessage(e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.sendTimeout
+          ? 'Connection timed out. Please check your network and try again.'
+          : ApiClient.extractError(e, fallback: 'Failed to load team attendance.'));
+    } catch (e) {
+      debugPrint('TEAM_ATTENDANCE unexpected error: $e');
+      errorMessage('Something went wrong. Tap to retry.');
     } finally {
       isLoading(false);
     }

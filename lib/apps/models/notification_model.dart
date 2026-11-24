@@ -24,10 +24,20 @@ class NotificationModel {
       body: json['body'] as String? ?? '',
       category: json['category'] as String? ?? 'General',
       createdAt:
-          DateTime.tryParse(json['created_at'] as String? ?? '') ??
-          DateTime.now(),
+          (DateTime.tryParse(json['created_at'] as String? ?? '') ??
+          DateTime.now()).toLocal(),
       isUnread: json['is_unread'] as bool? ?? false,
       route: json['route'] as String? ?? '',
     );
   }
+
+  NotificationModel copyWith({bool? isUnread}) => NotificationModel(
+        id: id,
+        title: title,
+        body: body,
+        category: category,
+        createdAt: createdAt,
+        isUnread: isUnread ?? this.isUnread,
+        route: route,
+      );
 }

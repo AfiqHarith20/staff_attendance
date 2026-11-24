@@ -12,6 +12,7 @@ import 'package:staff_attendance/language/String.dart';
 import 'package:toastification/toastification.dart';
 
 import 'firebase_options.dart';
+import 'core/services/device_service.dart';
 import 'core/services/storage_service.dart';
 import 'apps/bindings/app_bindings.dart';
 
@@ -68,6 +69,8 @@ Future<void> _initFCM() async {
 
     FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
       await StorageService.saveFcmToken(token);
+      // Re-register with backend when the FCM token rotates (only if logged in).
+      await DeviceService.registerIfLoggedIn();
     });
   } catch (e) {
     debugPrint('FCM init failed: $e');
@@ -102,6 +105,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final route = message.data['route'] as String?;
     if (route != null && route.isNotEmpty) {
       Get.toNamed(route);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // FCM token may have rotated while the app was backgrounded.
+      DeviceService.registerIfLoggedIn();
     }
   }
 

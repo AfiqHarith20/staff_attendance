@@ -42,24 +42,24 @@ class LeaveModel {
     totalDays: j['total_days'] as int,
     reason: j['reason'] as String,
     rejectionNote: j['rejection_note'] as String?,
-    appliedAt: DateTime.parse(j['applied_at'] as String),
+    appliedAt: DateTime.parse(j['applied_at'] as String).toLocal(),
     approvedBy: j['approved_by'] as String?,
   );
 
   // ── Display helpers ──
   static const typeLabels = {
-    LeaveType.annual: 'Annual Leave',
-    LeaveType.medical: 'Medical Leave',
-    LeaveType.emergency: 'Emergency Leave',
-    LeaveType.unpaid: 'Unpaid Leave',
-    LeaveType.other: 'Other Leave',
+    LeaveType.annual: 'annual',
+    LeaveType.medical: 'medical',
+    LeaveType.emergency: 'emergency',
+    LeaveType.unpaid: 'unpaid',
+    LeaveType.other: 'other_leave',
   };
 
   static const statusLabels = {
-    LeaveStatus.pending: 'Pending',
-    LeaveStatus.approved: 'Approved',
-    LeaveStatus.rejected: 'Rejected',
-    LeaveStatus.cancelled: 'Cancelled',
+    LeaveStatus.pending: 'pending',
+    LeaveStatus.approved: 'approved',
+    LeaveStatus.rejected: 'rejected',
+    LeaveStatus.cancelled: 'cancelled',
   };
 
   static const typeColors = {
